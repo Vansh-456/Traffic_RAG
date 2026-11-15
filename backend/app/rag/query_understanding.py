@@ -42,8 +42,8 @@ INTENT_RULES: list[tuple[str, Intent]] = [
     (r"\b(why|kyun|kyon|cause|reason|wajah)\b|क्यों|वजह", "cause_explanation"),
     (r"\b(last|previous|pichle|ago|happened|was there|were there)\b|पिछले|हुआ था", "historical_lookup"),
     (r"\b(best time|good time|bad time|should i (leave|go|drive)|plan|trip|route to|drive to|go to|reach|jaana|jana|to the airport)\b|कब निकलें", "plan_trip"),
-    (r"\b(diversion|divert|closed|closure|restriction|advisory|rehearsal|road block|band|arrangements?)\b|डायवर्जन|बंद|प्रतिबंध", "advisory_lookup"),
-    (r"\b(slow|jam|jaam|traffic|congest|right now|abhi|moving|kaisa)\b|जाम|ट्रैफिक", "live_conditions"),
+    (r"\b(diversions?|divert(?:ed)?|closed|closures?|restrict(?:ions?|ed)?|advisor(?:y|ies)|rehearsals?|road ?blocks?|band|arrangements?|curbs?)\b|डायवर्जन|बंद|प्रतिबंध", "advisory_lookup"),
+    (r"\b(slow|jams?|jaam|traffic|congest(?:ed|ion)?|right now|abhi|moving|kaisa)\b|जाम|ट्रैफिक", "live_conditions"),
 ]
 OUT_OF_SCOPE = re.compile(
     r"\b(recipe|cricket score|stock|bitcoin|weather in (?!delhi)|movie|song|joke|poem|"
@@ -52,7 +52,8 @@ OUT_OF_SCOPE = re.compile(
 )
 TRAFFIC_WORDS = re.compile(
     r"traffic|road|jam|route|drive|diversion|closed|closure|flyover|metro|commute|travel|"
-    r"advisory|congestion|accident|waterlog|rain|fog|parking|airport|marg|chowk|"
+    r"advisor|congestion|accident|waterlog|rain|fog|parking|airport|marg|chowk|restrict|diver|"
+    r"delhi|ncr|puja|rally|procession|parade|rehearsal|vip|protest|"
     r"ट्रैफिक|सड़क|जाम|रास्ता|यातायात|kaisa|rasta|raasta|band|jaam",
     re.I,
 )
