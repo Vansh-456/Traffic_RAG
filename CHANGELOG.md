@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-15 — Phase 4: Ingestion II — news, dedup, live data
+
+### Added
+- Google News RSS (en/hi queries), publisher RSS with robots-aware trafilatura full text, GDELT backfill
+- TomTom flow (36 seeded segments) + incidents with an atomic Redis daily budget and adaptive day/night cadence
+- Incidents rendered as auto-expiring one-sentence documents through the normal pipeline
+- Open-Meteo weather for 8 Delhi zones with heavy_rain / fog / extreme_heat flags
+- Job runner with Redis locks, ingestion_runs and source health; APScheduler worker; chunk expiry and retention jobs
+- Typer CLI: ingest backfill-dtp / backfill-news / gazetteer / run-once, db seed
+- Verified on live data: 584 weather observations, 89 news articles, DTP advisories
+
 ## [0.3.0] - 2026-11-15 — Phase 3: Ingestion I — advisories
 
 ### Added
