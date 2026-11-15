@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-15 — Phase 6: Agent + generation
+
+### Added
+- Tools: live traffic (60-min trend), active incidents, weather, typical conditions, incident-history SQL templates, corridor route check
+- Agentic router: LLM tool-calling (max 4, timeouts) merged with enforced per-intent defaults
+- Streaming grounded generation with numbered citations, timestamps, language matching, follow-ups
+- Deterministic map features, live/weather/incident cards and citation metadata
+- Claim-level verification (LLM or lexical) with hedging, strict regeneration above 30% unsupported, revision SSE event
+- Redis semantic cache (cosine >= 0.95, same place + time bucket, intent TTLs); conversation memory; POST /api/chat SSE
+
 ## [0.5.0] - 2026-11-15 — Phase 5: Retrieval core
 
 ### Added
