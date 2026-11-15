@@ -6,6 +6,7 @@ import { Noto_Sans, Noto_Sans_Devanagari } from "next/font/google";
 import type { ReactNode } from "react";
 
 import { Header } from "@/components/Header";
+import { ServiceWorker } from "@/components/ServiceWorker";
 import { AppProviders } from "@/lib/i18n";
 
 const sans = Noto_Sans({ subsets: ["latin"], variable: "--font-latin", display: "swap" });
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <main id="main" className="flex flex-1 flex-col">
             {children}
           </main>
+          <ServiceWorker />
         </AppProviders>
       </body>
     </html>
