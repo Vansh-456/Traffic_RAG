@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 33% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --muted: 214 32% 92%;
+  --muted-foreground: 215 16% 40%;
+  --border: 214 25% 86%;
+  --primary: 221 83% 45%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 32 95% 50%;
+  --accent-foreground: 0 0% 100%;
+  --danger: 0 72% 48%;
+  --warn: 32 95% 42%;
+  --ok: 142 71% 33%;
+}
+
+.dark {
+  --background: 222 40% 8%;
+  --foreground: 210 30% 94%;
+  --card: 222 35% 12%;
+  --card-foreground: 210 30% 94%;
+  --muted: 220 25% 18%;
+  --muted-foreground: 215 18% 68%;
+  --border: 220 22% 22%;
+  --primary: 217 91% 64%;
+  --primary-foreground: 222 47% 11%;
+  --accent: 35 95% 58%;
+  --accent-foreground: 222 47% 11%;
+  --danger: 0 84% 64%;
+  --warn: 38 92% 58%;
+  --ok: 142 60% 50%;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+}
+
+.prose-answer p {
+  @apply my-2 leading-relaxed;
+}
+.prose-answer ul {
+  @apply my-2 list-disc space-y-1 pl-5;
+}
+.prose-answer ol {
+  @apply my-2 list-decimal space-y-1 pl-5;
+}
+.prose-answer strong {
+  @apply font-semibold;
+}
+
+.maplibregl-popup-content {
+  @apply rounded-md !bg-card !text-card-foreground text-sm shadow-lg;
+}
+.maplibregl-popup-tip {
+  @apply !border-t-card;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
