@@ -181,7 +181,9 @@ async def enrich_chunk(
         },
     ]
     try:
-        result = await llm.complete_json(messages, Enrichment, role="fast", purpose="enrichment")
+        result = await llm.complete_json(
+            messages, Enrichment, role="fast", purpose="enrichment", max_tokens=900
+        )
         # sanity: fill missing window from rules
         if not result.valid_from and not result.valid_to:
             vf, vt = validity_window(f"{title}\n{text}", published_at)

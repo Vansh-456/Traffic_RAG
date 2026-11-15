@@ -277,7 +277,7 @@ async def stream_answer(
     llm: LLMClient, messages: list[dict[str, Any]], usage: Usage
 ) -> AsyncIterator[str]:
     async for tok in llm.stream(
-        messages, "answer", usage=usage, purpose="generation", max_tokens=900
+        messages, "answer", usage=usage, purpose="generation", max_tokens=700
     ):
         yield tok
 

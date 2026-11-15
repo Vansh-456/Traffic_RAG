@@ -254,7 +254,7 @@ async def understand(
             role="fast",
             usage=usage,
             purpose="query_understanding",
-            max_tokens=700,
+            max_tokens=450,
         )
     except (LLMUnavailableError, LLMOutputError, TimeoutError) as exc:
         log.warning("query understanding llm failed", extra={"err": str(exc)[:200]})

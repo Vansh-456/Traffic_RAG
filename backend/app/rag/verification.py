@@ -145,7 +145,7 @@ async def verify(
                 role="verify",
                 usage=usage,
                 purpose="verification",
-                max_tokens=1200,
+                max_tokens=700,
             )
             judgements = {j.index: (j.supported, j.reason) for j in out.results}
             method = "llm"

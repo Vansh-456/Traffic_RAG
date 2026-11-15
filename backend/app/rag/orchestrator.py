@@ -309,7 +309,7 @@ async def run(
                 "answer",
                 usage=usage,
                 purpose="regeneration",
-                max_tokens=900,
+                max_tokens=700,
                 temperature=0.0,
             )
             stripper = gen.FollowupStripper()
