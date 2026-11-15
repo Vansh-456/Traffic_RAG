@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     llm_tpm_limit: int = 7500
     # if a model needs longer than this to free budget, use the fallback model instead
     llm_max_queue_seconds: float = 2.5
+    # one strict regeneration when > 30 % of claims are unsupported (doubles tokens;
+    # set false on free tiers to keep only the hedged/trimmed revision)
+    regenerate_unsupported: bool = True
     llm_reasoning_effort: str = "low"  # gpt-oss models: low | medium | high
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 3
