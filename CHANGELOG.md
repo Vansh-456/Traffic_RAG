@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-15 — Phase 2: Gazetteer & geocoding
+
+### Added
+- Curated Delhi gazetteer seed (~100 places, 22 road geometries, Hindi and Hinglish aliases)
+- OSM Overpass import of junctions, flyovers, roads, metro, venues, hospitals, markets
+- Geocoder: alias lookup, longest-match mention finder, pg_trgm fuzzy match, bounded/cached Nominatim fallback
+- GET /api/places/search autocomplete (English, Hindi, aliases)
+
 ## [0.1.0] - 2026-11-15 — Phase 1: Foundation
 
 ### Added
