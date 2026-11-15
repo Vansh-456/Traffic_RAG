@@ -60,6 +60,12 @@ services:
     <<: *backend-env
     command: ["python", "-m", "app.worker"]
     volumes: [rawdata:/data, models:/models]
+    # the image's HTTP healthcheck targets the API; the worker has no port
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import redis,os; redis.Redis.from_url(os.environ['REDIS_URL']).ping()\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       api: { condition: service_healthy }
 
