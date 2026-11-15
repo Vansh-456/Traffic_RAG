@@ -8,9 +8,15 @@ REF = date(2026, 11, 10)
 
 
 def test_extract_dates_formats():
-    assert extract_dates("on 15.11.2026 and 16/11/2026", REF) == [date(2026, 11, 15), date(2026, 11, 16)]
+    assert extract_dates("on 15.11.2026 and 16/11/2026", REF) == [
+        date(2026, 11, 15),
+        date(2026, 11, 16),
+    ]
     assert extract_dates("News Date: 13-Nov-2026", REF) == [date(2026, 11, 13)]
-    assert extract_dates("Chhath Puja (15 & 16 Nov 2026)", REF) == [date(2026, 11, 15), date(2026, 11, 16)]
+    assert extract_dates("Chhath Puja (15 & 16 Nov 2026)", REF) == [
+        date(2026, 11, 15),
+        date(2026, 11, 16),
+    ]
     assert extract_dates("from 14–27 Nov 2026", REF) == [date(2026, 11, 14), date(2026, 11, 27)]
     assert extract_dates("on November 15, 2026", REF) == [date(2026, 11, 15)]
     assert extract_dates("15 नवंबर 2026 को", REF) == [date(2026, 11, 15)]
@@ -31,7 +37,9 @@ def test_validity_window():
 
 def test_heuristic_enrichment():
     text = "A procession will move via ITO on 10.11.2026 from 10 AM to 6 PM. Bahadur Shah Zafar Marg will be closed."
-    e = heuristic_enrichment(text, "Diversions near ITO for procession", datetime(2026, 11, 9, tzinfo=IST))
+    e = heuristic_enrichment(
+        text, "Diversions near ITO for procession", datetime(2026, 11, 9, tzinfo=IST)
+    )
     assert e.event_type == "procession"
     assert "ITO" in e.locations and "Bahadur Shah Zafar Marg" in e.roads
     assert e.severity == "high"
@@ -40,7 +48,9 @@ def test_heuristic_enrichment():
 
 
 def test_enrichment_schema_parses_window():
-    e = Enrichment(event_type="closure", valid_from="2026-11-10T10:00:00+05:30", valid_to="10/11/2026 18:00")
+    e = Enrichment(
+        event_type="closure", valid_from="2026-11-10T10:00:00+05:30", valid_to="10/11/2026 18:00"
+    )
     vf, vt = e.parsed_window()
     assert vf == datetime(2026, 11, 10, 10, 0, tzinfo=IST)
     assert vt is not None and vt.hour == 18

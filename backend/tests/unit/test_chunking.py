@@ -18,7 +18,14 @@ In view of the procession, the following diversions will be in place:
 
 def republic_day_advisory() -> str:
     sections = []
-    for heading in ["RESTRICTIONS", "Diversions:", "Parking", "Metro", "Alternate routes", "Do's and Don'ts"]:
+    for heading in [
+        "RESTRICTIONS",
+        "Diversions:",
+        "Parking",
+        "Metro",
+        "Alternate routes",
+        "Do's and Don'ts",
+    ]:
         items = "\n".join(
             f"{i}. Traffic on road number {i} near Vijay Chowk and India Gate will not be permitted between 6 AM and 1 PM for the parade rehearsal, commuters should plan accordingly."
             for i in range(1, 16)
@@ -45,7 +52,12 @@ def test_long_advisory_splits_by_section_within_budget():
     text = republic_day_advisory()
     assert estimate_tokens(text) > 800
     sections = split_sections(text)
-    assert {s.heading for s in sections if s.heading} >= {"RESTRICTIONS", "Diversions", "Parking", "Metro"}
+    assert {s.heading for s in sections if s.heading} >= {
+        "RESTRICTIONS",
+        "Diversions",
+        "Parking",
+        "Metro",
+    }
     chunks = chunk_text(text)
     assert len(chunks) > 5
     for c in chunks:

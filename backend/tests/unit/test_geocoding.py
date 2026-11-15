@@ -63,7 +63,12 @@ def test_roads_have_line_geometry():
 
 def test_find_mentions_in_free_text():
     index = AliasIndex(load_seed_places(seed_path()))
-    found = [rec.name for _, rec in index.find_mentions("Traffic diverted at ITO towards Vikas Marg and Ring Road")]
+    found = [
+        rec.name
+        for _, rec in index.find_mentions(
+            "Traffic diverted at ITO towards Vikas Marg and Ring Road"
+        )
+    ]
     assert found == ["ITO", "Vikas Marg", "Ring Road"]
 
 

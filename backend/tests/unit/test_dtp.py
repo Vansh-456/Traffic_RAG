@@ -32,19 +32,22 @@ def test_parse_dtp_node():
     assert node.language == "en" and node.category == "Advisory"
     assert node.news_date == datetime(2026, 11, 13, tzinfo=IST)
     assert node.end_at == datetime(2026, 11, 17, 12, 0, tzinfo=IST)
-    assert node.pdf_links == ["https://traffic.delhipolice.gov.in/sites/default/files/Traffic%20Diversions/Advisory/chhath.pdf"]
+    assert node.pdf_links == [
+        "https://traffic.delhipolice.gov.in/sites/default/files/Traffic%20Diversions/Advisory/chhath.pdf"
+    ]
     drafts = dtp_advisories.node_to_drafts(node)
     assert drafts[0].trust_level == "official" and drafts[0].valid_to_hint == node.end_at
 
 
 def test_dtp_listing_discovery_and_max_id():
     urls = dtp_advisories.discover_from_listing(LISTING_HTML)
-    assert urls == ["https://traffic.delhipolice.gov.in/en/%F0%9F%9A%A8-chhath", "https://traffic.delhipolice.gov.in/en/iitf"]
+    assert urls == [
+        "https://traffic.delhipolice.gov.in/en/%F0%9F%9A%A8-chhath",
+        "https://traffic.delhipolice.gov.in/en/iitf",
+    ]
     assert dtp_advisories.max_node_id(LISTING_HTML) == 1394
 
 
 def test_error_page_is_ignored():
     html = '<h1>Error Page</h1><article id="node-900" class="node node-page clearfix">'
     assert dtp_advisories.parse_node(html, "u") is None
-
-

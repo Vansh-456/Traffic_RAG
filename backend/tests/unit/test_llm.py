@@ -95,6 +95,14 @@ async def test_fallback_model_used_on_failure(monkeypatch):
 
 
 async def test_disabled_without_keys():
-    c = LLMClient(Settings(_env_file=None, groq_api_key="", gemini_api_key="", anthropic_api_key="", openai_api_key=""))
+    c = LLMClient(
+        Settings(
+            _env_file=None,
+            groq_api_key="",
+            gemini_api_key="",
+            anthropic_api_key="",
+            openai_api_key="",
+        )
+    )
     with pytest.raises(LLMUnavailableError):
         await c.complete([{"role": "user", "content": "x"}])

@@ -23,9 +23,14 @@ def test_garbled_detection():
     assert looks_garbled("")  # scanned PDF, no text layer
     kruti = "fnYyh ;krk;kr iqfyl }kjk vkSj ;krk;kr dks ekxZ ij Mk;oVZ fd;k tk,xkA " * 6
     assert looks_garbled(kruti)
-    good = "Traffic coming from Vikas Marg towards ITO will be diverted at ITO chowk towards Ring Road. " * 4
+    good = (
+        "Traffic coming from Vikas Marg towards ITO will be diverted at ITO chowk towards Ring Road. "
+        * 4
+    )
     assert not looks_garbled(good)
-    assert not looks_garbled("विकास मार्ग से आईटीओ की ओर आने वाले यातायात को रिंग रोड की ओर मोड़ा जाएगा। " * 3)
+    assert not looks_garbled(
+        "विकास मार्ग से आईटीओ की ओर आने वाले यातायात को रिंग रोड की ओर मोड़ा जाएगा। " * 3
+    )
 
 
 def test_clean_text_drops_boilerplate_and_page_numbers():
