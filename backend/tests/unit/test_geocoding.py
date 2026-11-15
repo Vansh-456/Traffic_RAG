@@ -1,6 +1,12 @@
 import pytest
 
-from app.ingestion.geocoding import AliasIndex, get_geocoder, load_seed_places, normalize_mention, seed_path
+from app.ingestion.geocoding import (
+    AliasIndex,
+    get_geocoder,
+    load_seed_places,
+    normalize_mention,
+    seed_path,
+)
 
 
 @pytest.fixture(scope="module")
