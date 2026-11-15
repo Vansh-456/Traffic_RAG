@@ -1,0 +1,39 @@
+# Monitored segments polled from TomTom Flow Segment Data (one point per segment).
+# 36 points x ~1 req per poll. Budget manager adapts frequency to TOMTOM_DAILY_BUDGET.
+segments:
+  - {id: rr-ito, name: Ring Road near ITO / IP Estate, road: Ring Road, lat: 28.6330, lon: 77.2500}
+  - {id: rr-rajghat, name: Ring Road at Rajghat, road: Ring Road, lat: 28.6406, lon: 77.2495}
+  - {id: rr-skk, name: Ring Road at Sarai Kale Khan, road: Ring Road, lat: 28.5887, lon: 77.2580}
+  - {id: rr-ashram, name: Ring Road at Ashram, road: Ring Road, lat: 28.5714, lon: 77.2585}
+  - {id: rr-moolchand, name: Ring Road at Moolchand, road: Ring Road, lat: 28.5645, lon: 77.2343}
+  - {id: rr-aiims, name: Ring Road at AIIMS, road: Ring Road, lat: 28.5672, lon: 77.2100}
+  - {id: rr-dhaulakuan, name: Ring Road at Dhaula Kuan, road: Ring Road, lat: 28.5918, lon: 77.1617}
+  - {id: rr-naraina, name: Ring Road at Naraina, road: Ring Road, lat: 28.6300, lon: 77.1400}
+  - {id: rr-punjabibagh, name: Ring Road at Punjabi Bagh, road: Ring Road, lat: 28.6684, lon: 77.1310}
+  - {id: rr-azadpur, name: Ring Road at Azadpur, road: Ring Road, lat: 28.7076, lon: 77.1800}
+  - {id: rr-kashmeregate, name: Ring Road at ISBT Kashmere Gate, road: Ring Road, lat: 28.6676, lon: 77.2280}
+  - {id: orr-mukarba, name: Outer Ring Road at Mukarba Chowk, road: Outer Ring Road, lat: 28.7360, lon: 77.1600}
+  - {id: orr-peeragarhi, name: Outer Ring Road at Peeragarhi, road: Outer Ring Road, lat: 28.6800, lon: 77.0930}
+  - {id: orr-munirka, name: Outer Ring Road at Munirka, road: Outer Ring Road, lat: 28.5574, lon: 77.1747}
+  - {id: orr-iit, name: Outer Ring Road at IIT Gate, road: Outer Ring Road, lat: 28.5450, lon: 77.1926}
+  - {id: orr-chiragdelhi, name: Outer Ring Road at Chirag Delhi, road: Outer Ring Road, lat: 28.5390, lon: 77.2280}
+  - {id: orr-nehruplace, name: Outer Ring Road at Nehru Place, road: Outer Ring Road, lat: 28.5494, lon: 77.2519}
+  - {id: nh48-mahipalpur, name: NH-48 at Mahipalpur, road: NH-48, lat: 28.5450, lon: 77.1300}
+  - {id: nh48-rajokri, name: NH-48 at Rajokri, road: NH-48, lat: 28.5200, lon: 77.1000}
+  - {id: nh48-sirhaul, name: NH-48 at Sirhaul border, road: NH-48, lat: 28.4900, lon: 77.0900}
+  - {id: dnd-mid, name: DND Flyway, road: DND Flyway, lat: 28.5760, lon: 77.2950}
+  - {id: ito-junction, name: ITO junction, road: Vikas Marg, lat: 28.6289, lon: 77.2410}
+  - {id: vikas-laxminagar, name: Vikas Marg at Laxmi Nagar, road: Vikas Marg, lat: 28.6304, lon: 77.2773}
+  - {id: barapullah, name: Barapullah Elevated Road, road: Barapullah Elevated Road, lat: 28.5850, lon: 77.2450}
+  - {id: mb-saket, name: Mehrauli-Badarpur Road at Saket, road: Mehrauli-Badarpur Road, lat: 28.5245, lon: 77.2066}
+  - {id: mb-badarpur, name: Mehrauli-Badarpur Road at Badarpur, road: Mehrauli-Badarpur Road, lat: 28.5010, lon: 77.3020}
+  - {id: rohtak-punjabibagh, name: Rohtak Road near Punjabi Bagh, road: Rohtak Road, lat: 28.6700, lon: 77.1450}
+  - {id: rohtak-tikri, name: Rohtak Road at Tikri border, road: Rohtak Road, lat: 28.6880, lon: 76.9590}
+  - {id: gtk-azadpur, name: GT Karnal Road near Azadpur, road: GT Karnal Road, lat: 28.7150, lon: 77.1750}
+  - {id: gtk-alipur, name: GT Karnal Road at Alipur, road: GT Karnal Road, lat: 28.7980, lon: 77.1350}
+  - {id: mathura-pragati, name: Mathura Road at Pragati Maidan, road: Mathura Road, lat: 28.6178, lon: 77.2433}
+  - {id: mathura-sarita, name: Mathura Road at Sarita Vihar, road: Mathura Road, lat: 28.5285, lon: 77.2880}
+  - {id: aurobindo-greenpark, name: Aurobindo Marg at Green Park, road: Aurobindo Marg, lat: 28.5590, lon: 77.2060}
+  - {id: nh9-akshardham, name: NH-9 at Akshardham, road: NH-9, lat: 28.6127, lon: 77.2773}
+  - {id: nh9-ghazipur, name: NH-9 at Ghazipur, road: NH-9, lat: 28.6250, lon: 77.3240}
+  - {id: airport-t3, name: Airport road to Terminal 3, road: NH-48, lat: 28.5560, lon: 77.0950}

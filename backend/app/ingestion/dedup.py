@@ -1,7 +1,7 @@
 """Near-duplicate detection across sources.
 
-Two chunks from different documents published within ±48 h are duplicates if
-their 64-bit SimHash differs in ≤ 3 bits *or* their embedding cosine is ≥
+Two chunks from documents of *different sources* published within ±48 h are
+duplicates if their 64-bit SimHash differs in ≤ 3 bits *or* their embedding cosine is ≥
 ``DEDUP_SIM_THRESHOLD`` (default 0.92). Duplicates share a
 ``dedup_cluster_id``; one **canonical** member per cluster is chosen
 (official > sensor > news, then the longest / most complete text). Retrieval
@@ -83,7 +83,9 @@ async def assign_cluster(
                 SELECT c.id, c.simhash, c.dedup_cluster_id,
                        1 - (e.embedding <=> CAST(:vec AS vector)) AS sim
                 FROM chunks c JOIN chunk_embeddings e ON e.chunk_id = c.id
+                JOIN documents d ON d.id = c.document_id
                 WHERE c.document_id <> :doc
+                  AND d.source_id <> (SELECT source_id FROM documents WHERE id = :doc)
                   AND COALESCE(c.published_at, c.created_at) BETWEEN :lo AND :hi
                 ORDER BY e.embedding <=> CAST(:vec AS vector)
                 LIMIT 20
