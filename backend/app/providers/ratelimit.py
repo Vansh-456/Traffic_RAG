@@ -82,3 +82,81 @@ class RateLimiter:
         if not oldest:
             return 0.1
         return max(0.05, WINDOW_SECONDS - (now - float(oldest[0][1])) + 0.05)
+
+
+class TokenBudget:
+    """Per-model tokens-per-minute window (Groq free tier: 8,000 TPM per model).
+
+    Calls reserve their estimated tokens (prompt + max_tokens, which is what
+    Groq counts) before being sent. `wait_seconds` tells the caller how long
+    the model would need to free that budget, so the LLM client can switch to
+    a fallback model instead of queueing. Provider "retry after N s" hints are
+    applied as a cooldown via `block`.
+    """
+
+    def __init__(self, limit_per_minute: int, redis: Redis[bytes] | None = None) -> None:
+        self.limit = max(1, limit_per_minute)
+        self.redis = redis
+        self._local: dict[str, deque[tuple[float, int]]] = {}
+        self._blocked: dict[str, float] = {}
+
+    async def _entries(self, key: str, now: float) -> list[tuple[float, int]]:
+        if self.redis is not None:
+            try:
+                rkey = f"tpm:{key}"
+                await self.redis.zremrangebyscore(rkey, 0, now - WINDOW_SECONDS)
+                raw = await self.redis.zrange(rkey, 0, -1, withscores=True)
+                return [(float(score), int(member.decode().split(":")[1])) for member, score in raw]
+            except Exception:
+                self.redis = None
+        window = self._local.setdefault(key, deque())
+        while window and now - window[0][0] >= WINDOW_SECONDS:
+            window.popleft()
+        return list(window)
+
+    async def _blocked_for(self, key: str, now: float) -> float:
+        if self.redis is not None:
+            try:
+                ttl = await self.redis.pttl(f"tpm:block:{key}")
+                return max(0.0, ttl / 1000) if ttl and ttl > 0 else 0.0
+            except Exception:
+                self.redis = None
+        return max(0.0, self._blocked.get(key, 0.0) - now)
+
+    async def wait_seconds(self, key: str, tokens: int) -> float:
+        now = time.time()
+        blocked = await self._blocked_for(key, now)
+        entries = await self._entries(key, now)
+        used = sum(t for _, t in entries)
+        if used + tokens <= self.limit:
+            return blocked
+        # earliest moment enough old reservations expire to fit this call
+        need = used + tokens - self.limit
+        freed = 0
+        for ts, t in sorted(entries):
+            freed += t
+            if freed >= need:
+                return max(blocked, ts + WINDOW_SECONDS - now + 0.05)
+        return max(blocked, WINDOW_SECONDS)
+
+    async def reserve(self, key: str, tokens: int) -> None:
+        now = time.time()
+        if self.redis is not None:
+            try:
+                rkey = f"tpm:{key}"
+                await self.redis.zadd(rkey, {f"{now}:{tokens}:{uuid.uuid4().hex[:6]}": now})
+                await self.redis.expire(rkey, int(WINDOW_SECONDS) + 5)
+                return
+            except Exception:
+                self.redis = None
+        self._local.setdefault(key, deque()).append((now, tokens))
+
+    async def block(self, key: str, seconds: float) -> None:
+        seconds = min(max(seconds, 0.5), 60.0)
+        if self.redis is not None:
+            try:
+                await self.redis.set(f"tpm:block:{key}", "1", px=int(seconds * 1000))
+                return
+            except Exception:
+                self.redis = None
+        self._blocked[key] = time.time() + seconds
