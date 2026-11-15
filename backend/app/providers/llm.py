@@ -154,6 +154,8 @@ class LLMClient:
         self.settings = settings or get_settings()
         self.limiter = limiter or RateLimiter(self.settings.llm_rpm_limit)
         self.breaker = CircuitBreaker()
+        # background clients (worker, CLI ingestion) yield RPM headroom to interactive chat
+        self.background = False
         self._push_keys_to_env()
 
     @property
@@ -209,7 +211,11 @@ class LLMClient:
     async def _acompletion(self, model: str, **kwargs: Any) -> Any:
         import litellm
 
-        await self.limiter.acquire(model)
+        limit = self.settings.llm_rpm_limit_background if self.background else None
+        await self.limiter.acquire(model, max_wait=300.0 if self.background else 90.0, limit=limit)
+        if model.startswith("gemini/") and kwargs.get("max_tokens"):
+            # Gemini 3.x "thinking" tokens count against max_tokens; leave room for the answer
+            kwargs["max_tokens"] = max(int(kwargs["max_tokens"]) * 3, 2048)
         return await litellm.acompletion(
             model=model,
             timeout=self.settings.llm_timeout_seconds,

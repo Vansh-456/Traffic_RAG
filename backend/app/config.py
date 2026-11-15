@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     llm_model_fast: str = "groq/openai/gpt-oss-20b"
     llm_model_fallback: str = "gemini/gemini-3.5-flash"
     llm_rpm_limit: int = 28
+    llm_rpm_limit_background: int = (
+        12  # worker/ingestion share of the RPM window (chat gets the rest)
+    )
     llm_reasoning_effort: str = "low"  # gpt-oss models: low | medium | high
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 3
