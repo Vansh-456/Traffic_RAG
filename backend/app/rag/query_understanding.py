@@ -40,10 +40,10 @@ HINGLISH_GLOSSARY = {
 
 INTENT_RULES: list[tuple[str, Intent]] = [
     (r"\b(why|kyun|kyon|cause|reason|wajah)\b|क्यों|वजह", "cause_explanation"),
-    (r"\b(last|previous|pichle|ago|happened|was there|were there)\b|पिछले|हुआ था", "historical_lookup"),
+    (r"\b(last|previous|pichle|ago|happened|was|were|tha|thi)\b|पिछले|हुआ था|था\b|थी\b", "historical_lookup"),
     (r"\b(best time|good time|bad time|should i (leave|go|drive)|plan|trip|route to|drive to|go to|reach|jaana|jana|to the airport)\b|कब निकलें", "plan_trip"),
-    (r"\b(diversions?|divert(?:ed)?|closed|closures?|restrict(?:ions?|ed)?|advisor(?:y|ies)|rehearsals?|road ?blocks?|band|arrangements?|curbs?)\b|डायवर्जन|बंद|प्रतिबंध", "advisory_lookup"),
-    (r"\b(slow|jams?|jaam|traffic|congest(?:ed|ion)?|right now|abhi|moving|kaisa)\b|जाम|ट्रैफिक", "live_conditions"),
+    (r"\b(diversions?|divert(?:ed)?|closed|closures?|restrict(?:ions?|ed)?|advisor(?:y|ies)|rehearsals?|road ?blocks?|band|arrangements?|curbs?|open|affect(?:ed|s)?|roads? to avoid)\b|डायवर्जन|बंद|प्रतिबंध|खुला|प्रभावित", "advisory_lookup"),
+    (r"\b(slow|jams?|jaam|traffic|congest(?:ed|ion)?|right now|abhi|moving|kaisa|bheed|crowd(?:ed)?|rush)\b|जाम|ट्रैफिक|भीड़", "live_conditions"),
 ]
 OUT_OF_SCOPE = re.compile(
     r"\b(recipe|cricket score|stock|bitcoin|weather in (?!delhi)|movie|song|joke|poem|"
@@ -104,11 +104,18 @@ class QueryUnderstanding:
         return f"{self.intent}|{locs}|{self.time_window.bucket()}"
 
 
+_FUTURE = re.compile(r"\b(will|tomorrow|kal|rahega|rahegi|hoga|hogi|tonight|weekend|during|next|upcoming)\b|रहेगा|रहेगी|होगा|कल", re.I)
+_PRESENT = re.compile(r"\b(now|right now|currently|abhi|at the moment|is waqt)\b|अभी", re.I)
+
+
 def heuristic_intent(text: str) -> Intent:
     if OUT_OF_SCOPE.search(text) and not TRAFFIC_WORDS.search(text):
         return "out_of_scope"
     for pattern, intent in INTENT_RULES:
         if re.search(pattern, text, re.I):
+            # "will there be traffic …" / "kal … kaisa rahega" ask about the future → advisories
+            if intent == "live_conditions" and _FUTURE.search(text) and not _PRESENT.search(text):
+                return "advisory_lookup"
             return intent
     if not TRAFFIC_WORDS.search(text) and not get_geocoder().index.find_mentions(text):
         return "out_of_scope"
