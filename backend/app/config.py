@@ -62,7 +62,8 @@ class Settings(BaseSettings):
     llm_model_answer: str = "groq/openai/gpt-oss-120b"
     llm_model_fast: str = "groq/openai/gpt-oss-20b"
     llm_model_fallback: str = "gemini/gemini-3.5-flash"
-    llm_model_verify: str = "gemini/gemini-3.5-flash"  # off the critical path; separate quota
+    # routing + claim verification: a separate Groq quota pool from the fast model
+    llm_model_verify: str = "groq/qwen/qwen3.8-27b"
     llm_rpm_limit: int = 28
     # worker/ingestion share of the RPM window (chat gets the rest)
     llm_rpm_limit_background: int = 12

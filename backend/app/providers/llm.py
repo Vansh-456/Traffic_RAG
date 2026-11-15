@@ -37,7 +37,7 @@ from app.providers.ratelimit import RateLimiter, TokenBudget
 
 log = get_logger(__name__)
 
-Role = Literal["answer", "fast", "verify"]
+Role = Literal["answer", "fast", "verify", "route"]
 T = TypeVar("T", bound=BaseModel)
 
 # Rough USD per 1M tokens (input, output) for cost estimates in internals.
@@ -133,7 +133,7 @@ _JSON_BLOCK = re.compile(r"\{.*\}|\[.*\]", re.DOTALL)
 
 def extract_json(text: str) -> Any:
     """Parse JSON from a model reply, tolerating code fences / prose around it."""
-    text = text.strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
     try:
@@ -180,7 +180,7 @@ class LLMClient:
     def model_for(self, role: Role) -> str:
         if role == "answer":
             return self.settings.llm_model_answer
-        if role == "verify":
+        if role in ("verify", "route"):
             return self.settings.llm_model_verify
         return self.settings.llm_model_fast
 
@@ -196,11 +196,15 @@ class LLMClient:
         }.get(prefix, True)
 
     def candidate_models(self, role: Role) -> list[str]:
-        models = [self.model_for(role)]
-        if role == "verify":
-            models.append(self.settings.llm_model_fast)
-        models.append(self.settings.llm_model_fallback)
-        models = list(dict.fromkeys(models))
+        # each Groq model has its own token quota, so fall back across them before Gemini
+        s = self.settings
+        chain = {
+            "answer": [s.llm_model_answer, s.llm_model_fast],
+            "fast": [s.llm_model_fast, s.llm_model_verify],
+            "verify": [s.llm_model_verify, s.llm_model_fast],
+            "route": [s.llm_model_verify, s.llm_model_fast],
+        }[role]
+        models = list(dict.fromkeys([*chain, s.llm_model_fallback]))
         usable = [m for m in models if self._key_available(m) and not self.breaker.is_open(m)]
         if not usable:
             # all circuits open: try anyway with keys available (half-open)
@@ -225,9 +229,10 @@ class LLMClient:
 
     async def _admit(self, model: str, tokens: int, is_last: bool) -> bool:
         """Reserve TPM budget; False = this model is saturated, use the next candidate."""
-        if not model.startswith("groq/"):
-            return True
-        wait = await self.tpm.wait_seconds(model, tokens)
+        if model.startswith("groq/"):
+            wait = await self.tpm.wait_seconds(model, tokens)
+        else:  # no token accounting, but respect provider 429 cooldowns
+            wait = await self.tpm.wait_seconds(model, 0)
         threshold = 60.0 if self.background else self.settings.llm_max_queue_seconds
         if wait > threshold and not is_last:
             log.info(
@@ -237,7 +242,8 @@ class LLMClient:
             return False
         if wait > 0:
             await asyncio.sleep(min(wait, 60.0))
-        await self.tpm.reserve(model, tokens)
+        if model.startswith("groq/"):
+            await self.tpm.reserve(model, tokens)
         return True
 
     async def _on_rate_limit(self, model: str, exc: BaseException) -> None:
