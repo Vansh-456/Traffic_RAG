@@ -27,7 +27,7 @@ TIME_SQL = """
     AND COALESCE(c.valid_to, 'infinity'::timestamptz) >= :w_start)
   OR
   (c.valid_from IS NULL AND c.valid_to IS NULL
-    AND c.published_at BETWEEN CAST(:w_start AS timestamptz) - interval '1 day' AND CAST(:w_end AS timestamptz) + interval '1 day')
+    AND c.published_at BETWEEN CAST(:w_start AS timestamptz) - make_interval(days => :lookback_days) AND CAST(:w_end AS timestamptz) + interval '1 day')
 )
 """
 BASE_SQL = "c.status = 'ready' AND c.is_canonical"
@@ -60,6 +60,8 @@ class FilterSpec:
         p: dict[str, Any] = {}
         if self.window is not None:
             p["w_start"], p["w_end"] = self.window.start, self.window.end
+            # undated items: ±1 day for live questions, up to a week back otherwise
+            p["lookback_days"] = 1 if self.window.is_live else 7
         if self.query_geom is not None:
             p["q_geom"] = self.query_geom.wkt
             p["radius"] = self.radius_m or 1500
