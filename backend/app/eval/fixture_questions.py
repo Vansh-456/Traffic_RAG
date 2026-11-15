@@ -1,0 +1,224 @@
+"""Fixture evaluation questions over data/seed/eval_fixture.yaml.
+
+Each tuple: (question, language, intent, clock, gold_doc_ids, tags).
+Empty gold → unanswerable (expected abstention) unless intent is out_of_scope.
+The first 30 entries tagged 'smoke' form the CI subset.
+`python -m app.eval.fixture_questions` writes data/seed/eval_questions.jsonl.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+Q = tuple[str, str, str, str, list[str], list[str]]
+
+QUESTIONS: list[Q] = [
+    # --- smoke subset (30) ---
+    ("Any diversions near ITO today?", "en", "advisory_lookup", "A", ["d01", "d02", "d03"], ["smoke", "location", "time_relative", "spec_example"]),
+    ("Why is Ring Road slow right now?", "en", "cause_explanation", "A", ["d06", "d20"], ["smoke", "spec_example", "live"]),
+    ("Kal Red Fort ke paas traffic kaisa rahega?", "hinglish", "advisory_lookup", "A", ["d13", "d14"], ["smoke", "spec_example", "time_relative"]),
+    ("Which roads are closed for the Republic Day rehearsal?", "en", "advisory_lookup", "B", ["d17", "d18"], ["smoke", "spec_example"]),
+    ("Is 6 pm Friday a bad time to drive to IGI Airport?", "en", "plan_trip", "A", ["d15", "d16"], ["smoke", "spec_example", "time_relative"]),
+    ("What happened on Outer Ring Road last Tuesday evening?", "en", "historical_lookup", "A", ["d09"], ["smoke", "spec_example", "historical"]),
+    ("आज आईटीओ के पास कोई डायवर्जन है?", "hi", "advisory_lookup", "A", ["d01", "d02", "d03"], ["smoke", "hindi"]),
+    ("Is Bahadur Shah Zafar Marg closed today?", "en", "advisory_lookup", "A", ["d01", "d02", "d03"], ["smoke"]),
+    ("Traffic restrictions for Chhath Puja this weekend?", "en", "advisory_lookup", "A", ["d04"], ["smoke", "time_relative"]),
+    ("Will there be traffic near Bharat Mandapam during the trade fair?", "en", "advisory_lookup", "A", ["d05"], ["smoke"]),
+    ("Any accident near Moolchand right now?", "en", "live_conditions", "A", ["d06"], ["smoke", "live"]),
+    ("What restrictions are there for the cricket match at Kotla?", "en", "advisory_lookup", "A", ["d10"], ["smoke"]),
+    ("Is Kartavya Path closed tomorrow morning?", "en", "advisory_lookup", "A", ["d11"], ["smoke", "time_relative"]),
+    ("Is Barapullah open tonight?", "en", "advisory_lookup", "A", ["d12"], ["smoke", "time_relative"]),
+    ("लाल किला के पास कल कौन सी सड़कें बंद रहेंगी?", "hi", "advisory_lookup", "A", ["d13", "d14"], ["smoke", "hindi", "time_relative"]),
+    ("Any construction on NH-48 near Mahipalpur?", "en", "advisory_lookup", "A", ["d15"], ["smoke"]),
+    ("Republic Day rehearsal ke liye metro stations band honge kya?", "hinglish", "advisory_lookup", "B", ["d17", "d18"], ["smoke"]),
+    ("Is GRAP in force in Delhi now?", "en", "general_info", "A", ["d19"], ["smoke"]),
+    ("Why is Ashram so slow these days?", "en", "cause_explanation", "A", ["d20", "d06"], ["smoke"]),
+    ("Anand Vihar ISBT pe bheed hai kya?", "hinglish", "live_conditions", "A", ["d22", "d23"], ["smoke"]),
+    ("Is the DND open tonight?", "en", "advisory_lookup", "A", ["d24"], ["smoke", "time_relative"]),
+    ("Why is Vikas Marg jammed?", "en", "cause_explanation", "A", ["d25", "d01"], ["smoke", "live"]),
+    ("Will the Jantar Mantar protest affect Connaught Place traffic today?", "en", "advisory_lookup", "A", ["d26"], ["smoke"]),
+    ("Which roads are affected by the half marathon on Sunday?", "en", "advisory_lookup", "A", ["d27"], ["smoke", "time_relative"]),
+    ("Was Signature Bridge closed on Sunday?", "en", "historical_lookup", "A", ["d29"], ["smoke", "historical"]),
+    ("Any diversion at Peeragarhi this week?", "en", "advisory_lookup", "A", ["d31"], ["smoke"]),
+    ("Is there a diversion at Dwarka Sector 21 today?", "en", "advisory_lookup", "A", [], ["smoke", "unanswerable"]),
+    ("Any road closures on GT Karnal Road tomorrow?", "en", "advisory_lookup", "A", [], ["smoke", "unanswerable"]),
+    ("Give me a recipe for paneer butter masala", "en", "out_of_scope", "A", [], ["smoke", "out_of_scope"]),
+    ("Who won the football world cup?", "en", "out_of_scope", "A", [], ["smoke", "out_of_scope"]),
+    # --- d01/d02/d03 ITO procession ---
+    ("What is the alternate route to avoid ITO today?", "en", "advisory_lookup", "A", ["d01", "d02", "d03"], ["alternatives"]),
+    ("ITO ke paas aaj jaam hai kya?", "hinglish", "live_conditions", "A", ["d01", "d02", "d03", "d25"], []),
+    ("From where to where is the procession going today?", "en", "advisory_lookup", "A", ["d01", "d02", "d03"], []),
+    ("Traffic from Vikas Marg towards ITO will be diverted where?", "en", "advisory_lookup", "A", ["d01", "d02"], []),
+    ("Can I drive from Mandi House to ITO this afternoon?", "en", "plan_trip", "A", ["d01", "d02"], ["time_relative"]),
+    ("विकास मार्ग से आईटीओ जाने वाला ट्रैफिक कहाँ मोड़ा जाएगा?", "hi", "advisory_lookup", "A", ["d01", "d02"], ["hindi"]),
+    ("Daryaganj mein aaj traffic kaisa hai?", "hinglish", "live_conditions", "A", ["d01", "d02", "d03"], []),
+    ("Is Delhi Gate affected by any procession today?", "en", "advisory_lookup", "A", ["d01", "d02", "d03"], []),
+    # --- d04 Chhath ---
+    ("Commercial vehicles allowed on Vikas Marg during Chhath?", "en", "advisory_lookup", "A", ["d04"], []),
+    ("छठ पूजा पर लक्ष्मी नगर के पास क्या प्रतिबंध हैं?", "hi", "advisory_lookup", "A", ["d04"], ["hindi"]),
+    ("Chhath ke din Mayur Vihar jaana theek rahega?", "hinglish", "plan_trip", "A", ["d04"], []),
+    ("Where is parking not allowed for Chhath Puja?", "en", "advisory_lookup", "A", ["d04"], []),
+    ("What should I use instead of driving on NH-9 on 15 November?", "en", "advisory_lookup", "A", ["d04"], ["alternatives"]),
+    # --- d05 IITF ---
+    ("Which metro station should I use for the trade fair at Pragati Maidan?", "en", "general_info", "A", ["d05"], []),
+    ("Is Mathura Road congested during IITF hours?", "en", "advisory_lookup", "A", ["d05"], []),
+    ("भारत मंडपम व्यापार मेले के दौरान ट्रैफिक कैसा रहेगा?", "hi", "advisory_lookup", "A", ["d05"], ["hindi"]),
+    ("Pragati Maidan ke paas parking milegi?", "hinglish", "advisory_lookup", "A", ["d05"], []),
+    ("Avoid which stretch of Mathura Road during the trade fair?", "en", "advisory_lookup", "A", ["d05"], []),
+    ("Bhairon Marg traffic during trade fair next week?", "en", "advisory_lookup", "A", ["d05"], ["time_relative"]),
+    # --- d06 Moolchand accident ---
+    ("How many lanes are blocked near Moolchand?", "en", "live_conditions", "A", ["d06"], ["live"]),
+    ("Moolchand flyover pe abhi kya hua hai?", "hinglish", "live_conditions", "A", ["d06"], ["live"]),
+    ("मूलचंद के पास अभी कोई दुर्घटना है?", "hi", "live_conditions", "A", ["d06"], ["hindi", "live"]),
+    ("Is the road from Moolchand to Ashram slow now?", "en", "live_conditions", "A", ["d06", "d20"], ["live"]),
+    ("What is the delay on Ring Road towards Ashram?", "en", "live_conditions", "A", ["d06"], ["live"]),
+    # --- d07 ORR works ---
+    ("Any road works between Munirka and IIT Gate?", "en", "advisory_lookup", "A", ["d07"], []),
+    ("Why is Outer Ring Road slow near IIT?", "en", "cause_explanation", "A", ["d07"], []),
+    ("Munirka ke paas Outer Ring Road pe kaam chal raha hai?", "hinglish", "advisory_lookup", "A", ["d07"], []),
+    ("आउटर रिंग रोड पर मुनिरका के पास काम चल रहा है?", "hi", "advisory_lookup", "A", ["d07"], ["hindi"]),
+    # --- d08 waterlogging (historical) ---
+    ("Was there waterlogging at Dhaula Kuan last week?", "en", "historical_lookup", "A", ["d08"], ["historical"]),
+    ("What happened at Dhaula Kuan after the rain last Wednesday?", "en", "historical_lookup", "A", ["d08"], ["historical"]),
+    ("Pichle hafte Dhaula Kuan pe paani bhara tha kya?", "hinglish", "historical_lookup", "A", ["d08"], ["historical"]),
+    ("पिछले हफ्ते धौला कुआं पर जलभराव हुआ था?", "hi", "historical_lookup", "A", ["d08"], ["historical", "hindi"]),
+    # --- d09 ORR breakdown (historical) ---
+    ("Why was there a jam near Nehru Place last Tuesday?", "en", "historical_lookup", "A", ["d09"], ["historical"]),
+    ("How long did the Nehru Place jam last last week?", "en", "historical_lookup", "A", ["d09"], ["historical"]),
+    ("Pichle Tuesday Nehru Place ke paas kya hua tha?", "hinglish", "historical_lookup", "A", ["d09"], ["historical"]),
+    ("Did a truck break down on Outer Ring Road last week?", "en", "historical_lookup", "A", ["d09"], ["historical"]),
+    # --- d10 cricket ---
+    ("Where should spectators park for the Kotla match?", "en", "advisory_lookup", "A", ["d10"], []),
+    ("Arun Jaitley Stadium match ke din BSZ Marg band rahega?", "hinglish", "advisory_lookup", "A", ["d10"], []),
+    ("अरुण जेटली स्टेडियम मैच के लिए पार्किंग कहाँ है?", "hi", "advisory_lookup", "A", ["d10"], ["hindi"]),
+    ("Is JLN Marg parking allowed on Thursday?", "en", "advisory_lookup", "A", ["d10"], ["time_relative"]),
+    ("What time do cricket match restrictions start on 12 November?", "en", "advisory_lookup", "A", ["d10"], []),
+    # --- d11 VIP ---
+    ("Why is Vijay Chowk closed tomorrow?", "en", "cause_explanation", "A", ["d11"], ["time_relative"]),
+    ("Kal subah India Gate ke paas restrictions hain?", "hinglish", "advisory_lookup", "A", ["d11"], ["time_relative"]),
+    ("कल सुबह विजय चौक पर कोई प्रतिबंध है?", "hi", "advisory_lookup", "A", ["d11"], ["hindi", "time_relative"]),
+    ("Can I take Rafi Marg at 10 am tomorrow?", "en", "plan_trip", "A", ["d11"], ["time_relative"]),
+    # --- d12 Barapullah ---
+    ("What are the Barapullah closure timings?", "en", "advisory_lookup", "A", ["d12"], []),
+    ("Barapullah band hai toh kaunsa raasta lein?", "hinglish", "advisory_lookup", "A", ["d12"], ["alternatives"]),
+    ("बारापुला एलिवेटेड रोड रात में बंद है?", "hi", "advisory_lookup", "A", ["d12"], ["hindi"]),
+    ("Until when is Barapullah repair work going on?", "en", "advisory_lookup", "A", ["d12"], []),
+    # --- d13/d14 Red Fort ---
+    ("Is Netaji Subhash Marg closed tomorrow?", "en", "advisory_lookup", "A", ["d13", "d14"], ["time_relative"]),
+    ("What time does the procession start from Red Fort tomorrow?", "en", "advisory_lookup", "A", ["d13", "d14"], ["time_relative"]),
+    ("Chandni Chowk kal jaana sahi rahega?", "hinglish", "plan_trip", "A", ["d13", "d14", "d30"], ["time_relative"]),
+    ("Where will buses be diverted near Red Fort tomorrow?", "en", "advisory_lookup", "A", ["d13", "d14"], []),
+    ("लाल किला से जुलूस कब शुरू होगा?", "hi", "advisory_lookup", "A", ["d13", "d14"], ["hindi"]),
+    # --- d15/d16/d21 airport ---
+    ("How much extra time to reach Terminal 3 in the evening?", "en", "plan_trip", "A", ["d15", "d16"], []),
+    ("Friday shaam airport jaana kaisa rahega?", "hinglish", "plan_trip", "A", ["d15", "d16"], ["time_relative"]),
+    ("शुक्रवार शाम 6 बजे एयरपोर्ट जाना ठीक रहेगा?", "hi", "plan_trip", "A", ["d15", "d16"], ["hindi", "time_relative"]),
+    ("Why is NH-48 slow near Mahipalpur?", "en", "cause_explanation", "A", ["d15", "d21"], []),
+    ("Was there fog on NH-48 yesterday morning?", "en", "historical_lookup", "A", ["d21"], ["historical"]),
+    ("When will the Mahipalpur flyover work end?", "en", "advisory_lookup", "A", ["d15"], []),
+    ("Best time to leave for IGI Airport on Friday evening?", "en", "plan_trip", "A", ["d16", "d15"], []),
+    ("Dhaula Kuan to Terminal 3 travel time on Friday?", "en", "plan_trip", "A", ["d16"], []),
+    # --- d17/d18 Republic Day ---
+    ("Is Kartavya Path open on 23 January?", "en", "advisory_lookup", "B", ["d17", "d18"], []),
+    ("Which metro stations close for the full dress rehearsal?", "en", "advisory_lookup", "B", ["d17", "d18"], []),
+    ("गणतंत्र दिवस रिहर्सल के लिए कर्तव्य पथ कब बंद होगा?", "hi", "advisory_lookup", "B", ["d17", "d18"], ["hindi"]),
+    ("Rehearsal wale din Janpath cross kar sakte hain?", "hinglish", "advisory_lookup", "B", ["d17", "d18"], []),
+    ("Where is traffic diverted during the Republic Day rehearsal?", "en", "advisory_lookup", "B", ["d17", "d18"], []),
+    ("Is India Gate C-Hexagon open this Saturday morning?", "en", "advisory_lookup", "B", ["d17", "d18"], ["time_relative"]),
+    # --- d19 GRAP ---
+    ("Do I need a PUC certificate under GRAP?", "en", "general_info", "A", ["d19"], []),
+    ("GRAP Stage 2 mein diesel goods vehicles allowed hain?", "hinglish", "general_info", "A", ["d19"], []),
+    ("ग्रैप स्टेज 2 में क्या नियम हैं?", "hi", "general_info", "A", ["d19"], ["hindi"]),
+    # --- d20 Ashram ---
+    ("Until when is the Ashram Chowk underpass diversion?", "en", "advisory_lookup", "A", ["d20"], []),
+    ("Mathura Road se Ring Road jaane ka raasta kya hai Ashram pe?", "hinglish", "advisory_lookup", "A", ["d20"], ["alternatives"]),
+    ("आश्रम चौक पर डायवर्जन क्यों है?", "hi", "cause_explanation", "A", ["d20"], ["hindi"]),
+    # --- d22/d23 Anand Vihar ---
+    ("Will my car be towed if I park near Anand Vihar ISBT?", "en", "advisory_lookup", "A", ["d22"], []),
+    ("आनंद विहार बस अड्डे पर भीड़ क्यों है?", "hi", "cause_explanation", "A", ["d22", "d23"], ["hindi"]),
+    ("Until when are special arrangements at Anand Vihar?", "en", "advisory_lookup", "A", ["d22"], []),
+    # --- d24/d32 DND ---
+    ("Why is DND slow right now?", "en", "cause_explanation", "A", ["d32"], ["live"]),
+    ("DND pe abhi koi gaadi kharab hai?", "hinglish", "live_conditions", "A", ["d32"], ["live"]),
+    ("डीएनडी फ्लाईवे आज रात खुला रहेगा?", "hi", "advisory_lookup", "A", ["d24"], ["hindi", "time_relative"]),
+    ("What time does the DND lane closure start tonight?", "en", "advisory_lookup", "A", ["d24"], ["time_relative"]),
+    # --- d25 Vikas Marg ---
+    ("What is the delay on Vikas Marg at Laxmi Nagar?", "en", "live_conditions", "A", ["d25"], ["live"]),
+    ("Laxmi Nagar se ITO abhi kitna time lagega?", "hinglish", "plan_trip", "A", ["d25", "d01"], ["live"]),
+    ("विकास मार्ग पर अभी जाम क्यों है?", "hi", "cause_explanation", "A", ["d25", "d01"], ["hindi", "live"]),
+    # --- d26 protest ---
+    ("Which road should I avoid near Jantar Mantar today?", "en", "advisory_lookup", "A", ["d26"], []),
+    ("CP mein aaj protest ki wajah se traffic hoga?", "hinglish", "advisory_lookup", "A", ["d26"], []),
+    ("जंतर मंतर पर आज प्रदर्शन से ट्रैफिक पर असर पड़ेगा?", "hi", "advisory_lookup", "A", ["d26"], ["hindi"]),
+    ("Until what time is the protest at Jantar Mantar?", "en", "advisory_lookup", "A", ["d26"], []),
+    # --- d27 half marathon ---
+    ("Is Lodhi Road closed on Sunday morning?", "en", "advisory_lookup", "A", ["d27"], ["time_relative"]),
+    ("Half marathon ke din AIIMS ke paas Ring Road pe restrictions hain?", "hinglish", "advisory_lookup", "A", ["d27"], []),
+    ("हाफ मैराथन के दिन कौन सी सड़कें प्रभावित होंगी?", "hi", "advisory_lookup", "A", ["d27"], ["hindi"]),
+    ("Alternate route during the half marathon this weekend?", "en", "advisory_lookup", "A", ["d27"], ["alternatives", "time_relative"]),
+    # --- d28/d29 historical ---
+    ("Was Ring Road near Kashmere Gate closed last month?", "en", "historical_lookup", "A", ["d28"], ["historical"]),
+    ("Why was there congestion near Majnu Ka Tilla last month?", "en", "historical_lookup", "A", ["d28"], ["historical"]),
+    ("Pichle mahine Kashmere Gate pe metro ka kaam chal raha tha?", "hinglish", "historical_lookup", "A", ["d28"], ["historical"]),
+    ("How was traffic diverted when Signature Bridge was closed?", "en", "historical_lookup", "A", ["d29"], ["historical"]),
+    ("सिग्नेचर ब्रिज रविवार को बंद क्यों था?", "hi", "historical_lookup", "A", ["d29"], ["hindi", "historical"]),
+    # --- d30/d31 ---
+    ("Are cars allowed on the main Chandni Chowk road?", "en", "general_info", "A", ["d30"], []),
+    ("Chandni Chowk mein gaadi le ja sakte hain?", "hinglish", "general_info", "A", ["d30"], []),
+    ("Rohtak Road pe Peeragarhi ke paas diversion kab tak hai?", "hinglish", "advisory_lookup", "A", ["d31"], []),
+    ("पीरागढ़ी पर रोहतक रोड का डायवर्जन कब तक है?", "hi", "advisory_lookup", "A", ["d31"], ["hindi"]),
+    ("Traffic towards Punjabi Bagh diverted at Peeragarhi?", "en", "advisory_lookup", "A", ["d31"], []),
+    # --- compound ---
+    ("Any diversions near ITO today and is Barapullah open tonight?", "en", "advisory_lookup", "A", ["d01", "d12"], ["compound"]),
+    ("Is Kartavya Path closed tomorrow and what about Red Fort?", "en", "advisory_lookup", "A", ["d11", "d13"], ["compound", "time_relative"]),
+    ("Chhath and the half marathon: which roads should I avoid on 15 November?", "en", "advisory_lookup", "A", ["d04", "d27"], ["compound"]),
+    # --- unanswerable (should abstain) ---
+    ("Is there a diversion at Rohini Sector 3 today?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("Any closures at Singhu Border tomorrow?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("Was Tikri Border closed last month?", "en", "historical_lookup", "A", [], ["unanswerable", "historical"]),
+    ("Kal Janakpuri mein koi diversion hai?", "hinglish", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("क्या कल पीतमपुरा में कोई सड़क बंद है?", "hi", "advisory_lookup", "A", [], ["unanswerable", "hindi"]),
+    ("Any waterlogging in Dwarka right now?", "en", "live_conditions", "A", [], ["unanswerable", "live"]),
+    ("Is Mukarba Chowk flyover closed this weekend?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("Are there restrictions near Azadpur mandi tomorrow?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("Ghazipur border pe aaj diversion hai kya?", "hinglish", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("Is Dwarka Expressway closed on Friday?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    ("What happened at Vasant Kunj last Tuesday?", "en", "historical_lookup", "A", [], ["unanswerable", "historical"]),
+    ("Any diversion near Karol Bagh market today?", "en", "advisory_lookup", "A", [], ["unanswerable"]),
+    # --- out of scope ---
+    ("What's the capital of Australia?", "en", "out_of_scope", "A", [], ["out_of_scope"]),
+    ("Write me a poem about the monsoon", "en", "out_of_scope", "A", [], ["out_of_scope"]),
+    ("Bitcoin ka price kya hai?", "hinglish", "out_of_scope", "A", [], ["out_of_scope"]),
+    ("मुझे एक चुटकुला सुनाओ", "hi", "out_of_scope", "A", [], ["out_of_scope", "hindi"]),
+    ("Tell me a joke", "en", "out_of_scope", "A", [], ["out_of_scope"]),
+    ("What is the stock price of Reliance?", "en", "out_of_scope", "A", [], ["out_of_scope"]),
+]
+
+
+def to_records(clocks: dict[str, str]) -> list[dict[str, object]]:
+    out = []
+    for i, (q, lang, intent, clock, gold, tags) in enumerate(QUESTIONS, start=1):
+        out.append({
+            "id": f"fx-{i:03d}",
+            "question": q,
+            "language": lang,
+            "intent": intent,
+            "eval_clock": clocks[clock],
+            "gold_urls": [f"fixture://{d}" for d in gold],
+            "unanswerable": not gold and intent != "out_of_scope",
+            "out_of_scope": intent == "out_of_scope",
+            "tags": tags,
+        })
+    return out
+
+
+if __name__ == "__main__":
+    import yaml
+
+    root = Path(__file__).resolve().parents[3]
+    clocks = yaml.safe_load((root / "data/seed/eval_fixture.yaml").read_text(encoding="utf-8"))["clocks"]
+    path = root / "data/seed/eval_questions.jsonl"
+    records = to_records(clocks)
+    path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in records) + "\n", encoding="utf-8")
+    print(f"wrote {len(records)} questions to {path}")
