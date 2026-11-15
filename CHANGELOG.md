@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-15 — Phase 5: Retrieval core
+
+### Added
+- Relative time resolution in IST (now/today/tonight/kal/last Tuesday/6 pm Friday/this weekend, Hindi + Hinglish)
+- Query understanding: LLM structured output + heuristic path, follow-up resolution, rewrites, sub-questions
+- Hard filters (validity overlap, published fallback, spatial radius with relax x2 then drop)
+- Dense + hypothetical-question index + english/simple full-text + trigram name lists fused with RRF (k=60)
+- Cross-encoder rerank, final score = rerank x freshness x trust x proximity (with location-mismatch decay)
+- Per-stage traces and timings for the internals panel; verified on live DTP + news data
+
 ## [0.4.0] - 2026-11-15 — Phase 4: Ingestion II — news, dedup, live data
 
 ### Added
