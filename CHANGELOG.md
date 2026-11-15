@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-15 — Phase 7: Frontend core
+
+### Added
+- Public API: live/upcoming advisory feed with filters, advisory detail, live map GeoJSON (segments, incidents, advisory areas), feedback
+- Next.js 14 app (strict TS, Tailwind, shadcn-style primitives), EN/हिं UI strings, dark mode, skip link
+- Chat + map split home: streamed answers, citation chips with hover previews, verified/revised badges, feedback, follow-ups, cards
+- MapLibre map with OSM tiles, live congestion/incident/advisory layers, answer highlights with auto-fit, optional TomTom tiles
+- Advisories page with filters, mini-maps and Hindi/English toggle; About page; standalone web Docker image
+
 ## [0.6.0] - 2026-11-15 — Phase 6: Agent + generation
 
 ### Added
