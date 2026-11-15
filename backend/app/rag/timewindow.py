@@ -165,4 +165,4 @@ def resolve_time_window(text: str, now: datetime, intent: str | None = None) -> 
         return TimeWindow(now - timedelta(hours=2), now + timedelta(hours=1), "now", is_live=True)
     if intent == "historical_lookup":
         return TimeWindow(now - timedelta(days=30), now, "last_30_days", is_historical=True)
-    return TimeWindow(now - timedelta(hours=12), now + timedelta(days=3), "upcoming")
+    return TimeWindow(now - timedelta(hours=12), now + timedelta(days=7), "upcoming")

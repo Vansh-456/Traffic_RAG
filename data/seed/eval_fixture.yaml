@@ -1,0 +1,285 @@
+# Frozen evaluation corpus ("DB snapshot") — SYNTHETIC documents modelled on
+# real Delhi Traffic Police advisory patterns. Loaded only into the isolated
+# eval database (EVAL_DATABASE_URL), never into the live app database.
+# Times are IST. Each question carries its own frozen clock.
+clocks:
+  A: "2026-11-10T09:00:00+05:30"   # Tuesday morning
+  B: "2027-01-20T10:00:00+05:30"   # before Republic Day rehearsal
+
+documents:
+  - id: d01
+    trust: official
+    lang: en
+    title: "Traffic advisory: diversions near ITO for Nirankari Sant Samagam procession"
+    published: "2026-11-09T18:00"
+    valid: ["2026-11-10T10:00", "2026-11-10T18:00"]
+    text: |
+      A procession will move from Ramlila Maidan to Rajghat via ITO on 10.11.2026 between 10:00 AM and 6:00 PM.
+      Diversions:
+      1. Traffic coming from Vikas Marg towards ITO will be diverted at ITO chowk towards Ring Road.
+      2. Bahadur Shah Zafar Marg will be closed between Delhi Gate and ITO.
+      3. Vehicles from Mandi House towards ITO will be diverted at Tilak Bridge.
+      Alternate routes: Commuters are advised to use Ring Road and Mathura Road. Avoid ITO, Delhi Gate and Daryaganj.
+  - id: d02
+    trust: official
+    lang: hi
+    title: "यातायात सलाह: आईटीओ के पास जुलूस के कारण डायवर्जन"
+    published: "2026-11-09T18:05"
+    valid: ["2026-11-10T10:00", "2026-11-10T18:00"]
+    text: |
+      10.11.2026 को सुबह 10 बजे से शाम 6 बजे तक रामलीला मैदान से राजघाट तक आईटीओ होते हुए जुलूस निकलेगा।
+      डायवर्जन: विकास मार्ग से आईटीओ की ओर आने वाले यातायात को आईटीओ चौक पर रिंग रोड की ओर मोड़ा जाएगा।
+      बहादुर शाह जफर मार्ग दिल्ली गेट और आईटीओ के बीच बंद रहेगा। वैकल्पिक मार्ग: रिंग रोड और मथुरा रोड।
+  - id: d03
+    trust: news
+    lang: en
+    publisher: "City Times"
+    title: "Procession likely to cause traffic snarls near ITO today"
+    published: "2026-11-10T07:30"
+    text: |
+      Commuters heading to ITO on Tuesday should expect delays as a religious procession moves from Ramlila Maidan to Rajghat between 10 am and 6 pm, according to a Delhi Traffic Police advisory. Bahadur Shah Zafar Marg will be closed between Delhi Gate and ITO and traffic from Vikas Marg will be diverted towards Ring Road.
+  - id: d04
+    trust: official
+    lang: en
+    title: "Traffic arrangements for Chhath Puja at Yamuna ghats (East and Shahdara districts)"
+    published: "2026-11-09T12:00"
+    valid: ["2026-11-15T14:00", "2026-11-16T10:00"]
+    text: |
+      In view of Chhath Puja on 15.11.2026 and 16.11.2026, heavy movement of devotees is expected near Yamuna ghats in Laxmi Nagar, Mayur Vihar and Shahdara.
+      Restrictions: Commercial vehicles will not be allowed on Vikas Marg and NH-9 from 2 PM on 15.11.2026 to 10 AM on 16.11.2026.
+      Parking: No parking on service roads of NH-9 near Akshardham.
+      Commuters are advised to use Delhi Metro and avoid Vikas Marg near Laxmi Nagar.
+  - id: d05
+    trust: official
+    lang: en
+    title: "Heavy congestion expected around Bharat Mandapam for IITF 2026 (14-27 Nov 2026)"
+    published: "2026-11-09T10:00"
+    valid: ["2026-11-14T09:00", "2026-11-27T20:00"]
+    text: |
+      The India International Trade Fair will be held at Bharat Mandapam (Pragati Maidan) from 14.11.2026 to 27.11.2026, 9 AM to 8 PM.
+      Heavy traffic is expected on Mathura Road, Bhairon Marg and near India Gate C-Hexagon. Visitors should use Supreme Court metro station.
+      Parking near Bharat Mandapam is limited; avoid Mathura Road between ITO and Nizamuddin during fair hours.
+  - id: d06
+    trust: sensor
+    lang: en
+    title: "Live incident: accident near Moolchand"
+    published: "2026-11-10T08:20"
+    valid: ["2026-11-10T08:20", "2026-11-10T10:30"]
+    text: |
+      Accident on Ring Road near Moolchand towards Ashram, 2 lanes blocked, delay ~12 min, since 08:20 IST. (TomTom live data)
+  - id: d07
+    trust: sensor
+    lang: en
+    title: "Live incident: road works on Outer Ring Road"
+    published: "2026-11-09T06:00"
+    valid: ["2026-11-09T06:00", "2026-11-20T23:00"]
+    text: |
+      Road works on Outer Ring Road between Munirka and IIT Gate, one lane closed, delay ~6 min. (TomTom live data)
+  - id: d08
+    trust: news
+    lang: en
+    publisher: "Delhi Daily"
+    title: "Waterlogging on Ring Road near Dhaula Kuan after heavy rain"
+    published: "2026-11-04T09:00"
+    text: |
+      Heavy overnight rain led to waterlogging on Ring Road near Dhaula Kuan on Wednesday morning, slowing traffic towards the airport on NH-48 for nearly two hours. Pumps were deployed by the PWD.
+  - id: d09
+    trust: news
+    lang: en
+    publisher: "Metro Reporter"
+    title: "Outer Ring Road jammed for hours after truck breakdown near Nehru Place"
+    published: "2026-11-03T21:00"
+    text: |
+      A truck broke down on Outer Ring Road near Nehru Place on Tuesday evening around 7 pm, causing a long jam stretching to Chirag Delhi. Traffic police towed the truck by 9:30 pm.
+  - id: d10
+    trust: official
+    lang: en
+    title: "Traffic advisory for cricket match at Arun Jaitley Stadium on 12.11.2026"
+    published: "2026-11-10T08:00"
+    valid: ["2026-11-12T13:00", "2026-11-12T23:30"]
+    text: |
+      In view of the international cricket match at Arun Jaitley Stadium (Feroz Shah Kotla) on 12.11.2026, traffic restrictions will be in place from 1 PM to 11:30 PM.
+      Restrictions: Bahadur Shah Zafar Marg between Delhi Gate and ITO will be closed for general traffic.
+      Parking: Spectators should park at Ramlila Maidan and Rajghat parking lots. No parking on JLN Marg.
+  - id: d11
+    trust: official
+    lang: en
+    title: "VIP movement: restrictions on Kartavya Path and Vijay Chowk"
+    published: "2026-11-10T07:00"
+    valid: ["2026-11-11T08:00", "2026-11-11T12:00"]
+    text: |
+      Due to VIP movement on 11.11.2026 from 8 AM to 12 noon, traffic on Kartavya Path, Vijay Chowk and Rafi Marg will be restricted. Commuters are advised to avoid India Gate C-Hexagon and use Ring Road.
+  - id: d12
+    trust: official
+    lang: en
+    title: "Barapullah Elevated Road closed at night for repair work"
+    published: "2026-11-08T12:00"
+    valid: ["2026-11-09T23:00", "2026-11-13T05:00"]
+    text: |
+      Barapullah Elevated Road will remain closed from 11 PM to 5 AM nightly between 09.11.2026 and 13.11.2026 for repair of expansion joints. Commuters may use Lodhi Road and Ring Road via Sarai Kale Khan.
+  - id: d13
+    trust: official
+    lang: en
+    title: "Traffic restrictions around Red Fort for Shaheedi Diwas procession on 11.11.2026"
+    published: "2026-11-09T16:00"
+    valid: ["2026-11-11T07:00", "2026-11-11T20:00"]
+    text: |
+      A procession will start from Red Fort on 11.11.2026 at 7 AM and pass through Chandni Chowk and Netaji Subhash Marg.
+      Restrictions: Netaji Subhash Marg between Delhi Gate and Red Fort will be closed. Heavy congestion expected near Chandni Chowk and Daryaganj.
+      Alternate routes: Use Ring Road; buses will be diverted from Delhi Gate.
+  - id: d14
+    trust: official
+    lang: hi
+    title: "लाल किला के आसपास जुलूस के कारण यातायात प्रतिबंध"
+    published: "2026-11-09T16:10"
+    valid: ["2026-11-11T07:00", "2026-11-11T20:00"]
+    text: |
+      11.11.2026 को सुबह 7 बजे लाल किला से जुलूस शुरू होकर चांदनी चौक और नेताजी सुभाष मार्ग से गुजरेगा। नेताजी सुभाष मार्ग दिल्ली गेट और लाल किला के बीच बंद रहेगा। चांदनी चौक और दरियागंज के पास भारी जाम की संभावना है। वैकल्पिक मार्ग: रिंग रोड।
+  - id: d15
+    trust: official
+    lang: en
+    title: "Diversions on NH-48 near Mahipalpur due to flyover construction"
+    published: "2026-10-30T12:00"
+    valid: ["2026-11-01T00:00", "2026-12-15T23:59"]
+    text: |
+      Due to flyover construction near Mahipalpur, one carriageway of NH-48 towards Gurugram is narrowed between Mahipalpur and Rajokri until 15.12.2026. Traffic to IGI Airport Terminal 3 should allow extra time, especially during evening peak hours (5 PM to 9 PM).
+  - id: d16
+    trust: news
+    lang: en
+    publisher: "Commuter Weekly"
+    title: "Friday evenings worst for traffic on NH-48 towards IGI Airport"
+    published: "2026-11-07T11:00"
+    text: |
+      An analysis of traffic data shows Friday evenings between 6 pm and 8 pm are the slowest on NH-48 towards IGI Airport, with travel times from Dhaula Kuan to Terminal 3 nearly doubling. Commuters are advised to leave 45 minutes earlier.
+  - id: d17
+    trust: official
+    lang: en
+    title: "Traffic advisory: Republic Day Parade Full Dress Rehearsal on 23.01.2027"
+    published: "2027-01-20T09:00"
+    valid: ["2027-01-23T06:00", "2027-01-23T13:00"]
+    text: |
+      Restrictions: Kartavya Path will be closed from Vijay Chowk to India Gate from 11 PM on 22.01.2027 until the rehearsal ends on 23.01.2027.
+      No cross traffic will be allowed on Kartavya Path at Rafi Marg, Janpath and C-Hexagon India Gate from 6 AM.
+      Diversions: Traffic will be diverted at Vijay Chowk and India Gate towards Ring Road.
+      Metro: Central Secretariat and Udyog Bhawan metro stations will remain closed till 12 noon.
+  - id: d18
+    trust: official
+    lang: hi
+    title: "गणतंत्र दिवस फुल ड्रेस रिहर्सल 23.01.2027 के लिए यातायात सलाह"
+    published: "2027-01-20T09:05"
+    valid: ["2027-01-23T06:00", "2027-01-23T13:00"]
+    text: |
+      कर्तव्य पथ विजय चौक से इंडिया गेट तक 22.01.2027 रात 11 बजे से रिहर्सल समाप्त होने तक बंद रहेगा। रफी मार्ग, जनपथ और सी-हेक्सागन पर क्रॉस ट्रैफिक की अनुमति नहीं होगी। सेंट्रल सचिवालय और उद्योग भवन मेट्रो स्टेशन दोपहर 12 बजे तक बंद रहेंगे।
+  - id: d19
+    trust: official
+    lang: en
+    title: "GRAP Stage-II enforcement in effect across Delhi"
+    published: "2026-11-03T10:00"
+    valid: ["2026-11-03T00:00", "2026-11-30T23:59"]
+    text: |
+      GRAP Stage-II is in force across Delhi. Ensure a valid PUC certificate, follow emission norms and minimise private vehicle use. Entry of non-essential diesel goods vehicles is regulated.
+  - id: d20
+    trust: official
+    lang: en
+    title: "Diversion at Ashram Chowk due to underpass work"
+    published: "2026-09-28T12:00"
+    valid: ["2026-10-01T00:00", "2026-11-30T23:59"]
+    text: |
+      Due to underpass work at Ashram Chowk, traffic from Mathura Road towards Ring Road will be diverted via Sarai Kale Khan until 30.11.2026. Expect slow traffic during morning peak hours.
+  - id: d21
+    trust: news
+    lang: en
+    publisher: "Delhi Daily"
+    title: "Dense fog reduces visibility on NH-48 near Mahipalpur"
+    published: "2026-11-09T06:30"
+    text: |
+      Dense fog on Monday morning reduced visibility to under 200 metres on NH-48 near Mahipalpur, slowing traffic heading to IGI Airport.
+  - id: d22
+    trust: official
+    lang: en
+    title: "Special traffic arrangements around Anand Vihar ISBT for festive rush"
+    published: "2026-11-05T09:00"
+    valid: ["2026-11-05T00:00", "2026-11-15T23:59"]
+    text: |
+      Heavy rush expected around Anand Vihar ISBT and railway station until 15.11.2026. Unauthorised parking will be towed. Commuters should plan journeys in advance and prefer public transport.
+  - id: d23
+    trust: news
+    lang: hi
+    publisher: "दिल्ली समाचार"
+    title: "आनंद विहार में भारी भीड़, यात्रियों को परेशानी"
+    published: "2026-11-09T19:00"
+    text: |
+      त्योहारों के कारण आनंद विहार बस अड्डे और रेलवे स्टेशन पर भारी भीड़ रही। आसपास की सड़कों पर जाम लगा रहा और यात्रियों को घंटों इंतजार करना पड़ा।
+  - id: d24
+    trust: official
+    lang: en
+    title: "DND Flyway lane closure for maintenance (night)"
+    published: "2026-11-09T15:00"
+    valid: ["2026-11-10T22:00", "2026-11-11T05:00"]
+    text: |
+      One lane of DND Flyway towards Noida will be closed from 10 PM on 10.11.2026 to 5 AM on 11.11.2026 for maintenance. Expect slow traffic near the Delhi toll plaza.
+  - id: d25
+    trust: sensor
+    lang: en
+    title: "Live incident: jam on Vikas Marg"
+    published: "2026-11-10T08:30"
+    valid: ["2026-11-10T08:30", "2026-11-10T10:00"]
+    text: |
+      Stationary traffic on Vikas Marg at Laxmi Nagar towards ITO, delay ~18 min. (TomTom live data)
+  - id: d26
+    trust: news
+    lang: en
+    publisher: "City Times"
+    title: "Protest at Jantar Mantar likely to affect traffic in Connaught Place"
+    published: "2026-11-10T06:00"
+    valid: ["2026-11-10T10:00", "2026-11-10T16:00"]
+    text: |
+      A farmers' protest at Jantar Mantar from 10 am to 4 pm on Tuesday is likely to affect traffic on Sansad Marg and around Connaught Place. Police have advised commuters to avoid Tolstoy Marg.
+  - id: d27
+    trust: official
+    lang: en
+    title: "Traffic advisory for Delhi Half Marathon on 15.11.2026 (JLN Stadium)"
+    published: "2026-11-09T11:00"
+    valid: ["2026-11-15T04:00", "2026-11-15T11:00"]
+    text: |
+      The half marathon will start and finish at Jawaharlal Nehru Stadium on 15.11.2026. Lodhi Road, Aurobindo Marg near AIIMS and Ring Road between AIIMS and Moolchand will have restrictions from 4 AM to 11 AM. Use Mathura Road or Outer Ring Road.
+  - id: d28
+    trust: news
+    lang: en
+    publisher: "Metro Reporter"
+    title: "Ring Road near Kashmere Gate partly closed for metro work"
+    published: "2026-10-12T10:00"
+    text: |
+      A stretch of Ring Road near ISBT Kashmere Gate was partly closed for metro construction in October, causing congestion towards Majnu Ka Tilla during evening hours.
+  - id: d29
+    trust: official
+    lang: en
+    title: "Signature Bridge closed for structural inspection on 08.11.2026"
+    published: "2026-11-07T12:00"
+    valid: ["2026-11-08T06:00", "2026-11-08T18:00"]
+    text: |
+      Signature Bridge (Wazirabad bridge) was closed for structural inspection on 08.11.2026 from 6 AM to 6 PM. Traffic was diverted via Majnu Ka Tilla and the Ring Road.
+  - id: d30
+    trust: news
+    lang: en
+    publisher: "Delhi Daily"
+    title: "Chandni Chowk non-motorised zone timings"
+    published: "2026-11-01T10:00"
+    text: |
+      Motor vehicles remain banned on the main Chandni Chowk road between 9 am and 9 pm; e-rickshaws and pedestrians are allowed.
+  - id: d31
+    trust: official
+    lang: en
+    title: "Diversion on Rohtak Road at Peeragarhi for drain work"
+    published: "2026-11-09T09:00"
+    valid: ["2026-11-10T00:00", "2026-11-14T23:59"]
+    text: |
+      Due to drain repair work, traffic on Rohtak Road towards Punjabi Bagh will be diverted at Peeragarhi chowk to Outer Ring Road from 10.11.2026 to 14.11.2026.
+  - id: d32
+    trust: sensor
+    lang: en
+    title: "Live incident: broken-down vehicle on DND Flyway"
+    published: "2026-11-10T08:45"
+    valid: ["2026-11-10T08:45", "2026-11-10T09:45"]
+    text: |
+      Broken down vehicle on DND Flyway towards Noida, left lane blocked, delay ~7 min, since 08:45 IST. (TomTom live data)

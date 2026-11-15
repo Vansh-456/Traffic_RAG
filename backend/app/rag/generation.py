@@ -43,6 +43,7 @@ class Evidence:
             "id": self.n, "kind": self.kind, "title": self.title, "source": self.source,
             "url": self.url, "published_at": self.published_at, "snippet": self.text[:300],
             "chunk_id": self.chunk_id, "also_reported_by": self.extra.get("also_reported_by", 0),
+            "doc_url": self.extra.get("doc_url"),
         }
 
 
@@ -65,7 +66,7 @@ def build_evidence(chunks: list[Candidate], router: RouterOutput) -> list[Eviden
                 n=len(ev) + 1, kind="chunk", title=c.title + validity, text=c.text_with_context[:1800],
                 source=_source_label(c), url=c.url if c.url.startswith("http") else None,
                 published_at=c.published_at.isoformat() if c.published_at else None, chunk_id=c.chunk_id,
-                extra={"also_reported_by": c.also_reported_by, "geometry": c.geom_geojson, "event_type": c.event_type, "severity": c.severity},
+                extra={"also_reported_by": c.also_reported_by, "doc_url": c.url, "geometry": c.geom_geojson, "event_type": c.event_type, "severity": c.severity},
             )
         )
     for call in router.calls:

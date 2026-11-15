@@ -231,7 +231,7 @@ async def run(
 
     # 6.6 verification --------------------------------------------------------
     t0 = time.perf_counter()
-    verification: VerificationResult = await verify(answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by == "llm")
+    verification: VerificationResult = await verify(answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by != "abstain")
     final_answer = answer
     if verification.changed and verification.unsupported_ratio > REGENERATE_THRESHOLD and llm.enabled:
         yield {"event": "status", "data": {"message": "Re-checking the answer against sources…"}}

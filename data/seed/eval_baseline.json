@@ -1,0 +1,38 @@
+{
+  "smoke": {
+    "n": 30,
+    "n_answerable": 26,
+    "recall@5": 0.9167,
+    "recall@10": 0.9423,
+    "mrr": 0.9615,
+    "ndcg@10": 0.926,
+    "context_precision": 0.2468,
+    "faithfulness": 1.0,
+    "citation_accuracy": 0.3763,
+    "answer_relevancy": 0.6497,
+    "abstention_accuracy": 0.9333,
+    "unanswerable_abstain_rate": 0.5,
+    "language_match": 0.9667,
+    "intent_accuracy": 0.9667,
+    "latency_p50_ms": 107.5,
+    "latency_p95_ms": 424.4,
+    "first_token_p50_ms": 107.0,
+    "first_token_p95_ms": 422.0,
+    "cost_per_query_usd": 0.0,
+    "threshold_sweep": {
+      "accuracy_by_threshold": {
+        "0.05": 0.9286,
+        "0.08": 0.9286,
+        "0.10": 0.9286,
+        "0.12": 0.9286,
+        "0.15": 0.9286,
+        "0.18": 0.9286,
+        "0.20": 0.9643,
+        "0.25": 0.9286,
+        "0.30": 0.9286
+      },
+      "best": 0.2,
+      "n": 28
+    }
+  }
+}

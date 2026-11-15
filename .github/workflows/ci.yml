@@ -41,10 +41,35 @@ jobs:
         run: alembic upgrade head
       - name: Tests (unit + integration)
         env:
+          TEST_DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot_test
+          TEST_REDIS_URL: redis://localhost:6379/15
           DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot
           REDIS_URL: redis://localhost:6379/0
           APP_ENV: test
         run: pytest -m "not network" --cov=app --cov-report=term-missing:skip-covered
+      - name: Eval regression gate (30-question smoke subset)
+        env:
+          DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot
+          EVAL_DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot_eval
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+        run: python -m app.cli eval run --subset smoke --label ci-smoke --gate
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npx prettier --check .
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
 
   docker:
     runs-on: ubuntu-latest
@@ -54,3 +79,5 @@ jobs:
         run: docker build -t copilot-backend -f backend/Dockerfile .
       - name: Build db image
         run: docker build -t copilot-db infra/db
+      - name: Build web image
+        run: docker build -t copilot-web frontend

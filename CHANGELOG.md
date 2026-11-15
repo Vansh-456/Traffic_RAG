@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-15 — Phase 10: Evaluation
+
+### Added
+- Frozen synthetic eval corpus (32 docs) loaded into an isolated eval DB; 153 questions across 7 intents, en/hi/hinglish, unanswerable and out-of-scope
+- Runner with per-question frozen clocks; Recall@5/10, MRR, nDCG@10, faithfulness, citation accuracy, abstention, language match, latency, cost
+- Ablations (rerank, hybrid, geo filter, freshness, rewrite, question index, verification) and docs/evaluation.md tables
+- Relevance-threshold sweep (calibrated default 0.08) and eval-driven fixes to freshness, intent rules and time windows
+- CI smoke gate vs data/seed/eval_baseline.json; LLM question drafting from live data with admin review/export
+
 ## [0.9.0] - 2026-11-15 — Phase 9: Alerts
 
 ### Added
