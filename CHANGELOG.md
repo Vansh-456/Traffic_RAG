@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-15 — Phase 8: RAG internals + admin
+
+### Added
+- Internals drawer: cache, query understanding with location mini-map, tools, per-list ranks -> RRF -> rerank -> final factors, dropped candidates, context size, per-claim verification, latency/token/cost, Langfuse link for admins
+- Admin API + dashboard: source health and toggles, ingestion volume, TomTom budget gauge, p50/p95 and first-token latency, cache hit rate, eval runs, worst answers with feedback, eval-question review
+- Langfuse traces per request with stage spans and generations; Prometheus /metrics
+
 ## [0.7.0] - 2026-11-15 — Phase 7: Frontend core
 
 ### Added
