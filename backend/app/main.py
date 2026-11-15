@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health
+from app.api import health, places
 from app.config import get_settings
 from app.observability.logging import configure_logging, get_logger, request_id_var
 from app.observability.metrics import REQUEST_LATENCY
@@ -29,6 +29,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         attach_redis(get_redis())
     except Exception as exc:
         log.warning("redis unavailable at startup", extra={"err": str(exc)})
+    try:
+        from app.db.session import session_scope
+        from app.ingestion.geocoding import refresh_geocoder
+
+        async with session_scope() as s:
+            await refresh_geocoder(s, get_redis())
+    except Exception as exc:
+        log.warning("geocoder DB refresh failed; using seed aliases", extra={"err": str(exc)[:200]})
     flags = settings.feature_flags()
     for feature, enabled in flags.items():
         if not enabled:
@@ -73,7 +81,8 @@ def create_app() -> FastAPI:
             )
             request_id_var.reset(token)
 
-    app.include_router(health.router)
+    for r in (health.router, places.router):
+        app.include_router(r)
     return app
 
 
