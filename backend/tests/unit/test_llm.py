@@ -150,3 +150,28 @@ def test_verify_role_candidates():
         "groq/openai/gpt-oss-20b",
         "gemini/gemini-3.5-flash",
     ]
+
+
+async def test_rescue_pass_waits_for_soonest_groq_model(monkeypatch):
+    c = LLMClient(_settings(llm_max_queue_seconds=0.1, gemini_api_key=""))
+    await c.tpm.block("groq/openai/gpt-oss-20b", 0.6)  # frees up soon
+    await c.tpm.block("groq/qwen/qwen3.8-27b", 30)
+    seen = []
+
+    async def fake(model, **kw):
+        seen.append(model)
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert seen == ["groq/openai/gpt-oss-20b"]  # waited ~0.6 s rather than failing
+
+
+def test_wrapped_429_is_detected():
+    from app.providers.llm import _is_rate_limit
+
+    class MidStreamFallbackError(Exception):
+        pass
+
+    assert _is_rate_limit(MidStreamFallbackError("vertex_ai_betaException 429 RESOURCE_EXHAUSTED"))
+    assert not _is_rate_limit(ValueError("bad request"))

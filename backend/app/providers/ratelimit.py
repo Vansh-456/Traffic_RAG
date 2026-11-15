@@ -123,15 +123,16 @@ class TokenBudget:
                 self.redis = None
         return max(0.0, self._blocked.get(key, 0.0) - now)
 
-    async def wait_seconds(self, key: str, tokens: int) -> float:
+    async def wait_seconds(self, key: str, tokens: int, limit: int | None = None) -> float:
+        cap = limit or self.limit
         now = time.time()
         blocked = await self._blocked_for(key, now)
         entries = await self._entries(key, now)
         used = sum(t for _, t in entries)
-        if used + tokens <= self.limit:
+        if used + tokens <= cap:
             return blocked
         # earliest moment enough old reservations expire to fit this call
-        need = used + tokens - self.limit
+        need = used + tokens - cap
         freed = 0
         for ts, t in sorted(entries):
             freed += t

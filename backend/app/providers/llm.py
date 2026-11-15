@@ -115,6 +115,12 @@ class CircuitBreaker:
             log.warning("circuit opened for model", extra={"model": model})
 
 
+def _is_rate_limit(exc: BaseException) -> bool:
+    """429s, including ones LiteLLM wraps (e.g. MidStreamFallbackError)."""
+    text = f"{type(exc).__name__} {exc}"
+    return "RateLimit" in text or "429" in text or "RESOURCE_EXHAUSTED" in text
+
+
 def _is_transient(exc: BaseException) -> bool:
     name = type(exc).__name__
     transient = (
@@ -227,24 +233,51 @@ class LLMClient:
             chars += len(json.dumps(kwargs["tools"]))
         return chars // 4 + int(kwargs.get("max_tokens") or 512)
 
-    async def _admit(self, model: str, tokens: int, is_last: bool) -> bool:
-        """Reserve TPM budget; False = this model is saturated, use the next candidate."""
-        if model.startswith("groq/"):
-            wait = await self.tpm.wait_seconds(model, tokens)
-        else:  # no token accounting, but respect provider 429 cooldowns
-            wait = await self.tpm.wait_seconds(model, 0)
+    async def _wait_for(self, model: str, tokens: int) -> float:
+        if not model.startswith("groq/"):  # no token accounting; only provider 429 cooldowns
+            return await self.tpm.wait_seconds(model, 0)
+        # background traffic may only use half of each model's budget
+        share = self.settings.llm_tpm_limit // 2 if self.background else None
+        return await self.tpm.wait_seconds(model, tokens, limit=share)
+
+    async def has_budget(self, role: Role, tokens: int) -> bool:
+        """True if the role's primary model could serve a call of `tokens` right now."""
+        return await self._wait_for(self.model_for(role), tokens) == 0
+
+    async def _models_to_try(self, role: Role, tokens: int) -> AsyncIterator[str]:
+        """Yield models ready to call (budget reserved).
+
+        Pass 1: candidates in order, skipping any that would need more than
+        LLM_MAX_QUEUE_SECONDS to free budget. Pass 2 (rescue): wait for the Groq
+        candidate that frees up soonest (<= 30 s) instead of failing outright.
+        """
+        candidates = self.candidate_models(role)
         threshold = 60.0 if self.background else self.settings.llm_max_queue_seconds
-        if wait > threshold and not is_last:
+        for model in candidates:
+            wait = await self._wait_for(model, tokens)
+            if wait > threshold:
+                log.info(
+                    "model saturated; trying next", extra={"model": model, "wait_s": round(wait, 1)}
+                )
+                continue
+            if wait > 0:
+                await asyncio.sleep(wait)
+            if model.startswith("groq/"):
+                await self.tpm.reserve(model, tokens)
+            yield model
+        groq = [m for m in candidates if m.startswith("groq/")]
+        if not groq:
+            return
+        waits = [(await self._wait_for(m, tokens), m) for m in groq]
+        wait, model = min(waits)
+        if wait <= 30.0:
             log.info(
-                "model token budget saturated; using fallback",
+                "all models busy; waiting for the soonest",
                 extra={"model": model, "wait_s": round(wait, 1)},
             )
-            return False
-        if wait > 0:
-            await asyncio.sleep(min(wait, 60.0))
-        if model.startswith("groq/"):
+            await asyncio.sleep(wait)
             await self.tpm.reserve(model, tokens)
-        return True
+            yield model
 
     async def _on_rate_limit(self, model: str, exc: BaseException) -> None:
         """Honour the provider's 'try again in Ns' hint as a cooldown (not a breaker failure)."""
@@ -283,22 +316,17 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        candidates = self.candidate_models(role)
-        for idx, model in enumerate(candidates):
-            kwargs: dict[str, Any] = {
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            }
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-            if tools:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = "auto"
-            if not await self._admit(
-                model, self._estimate_tokens(kwargs), idx == len(candidates) - 1
-            ):
-                continue
+        kwargs: dict[str, Any] = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
+        async for model in self._models_to_try(role, self._estimate_tokens(kwargs)):
             started = time.perf_counter()
             try:
                 async for attempt in AsyncRetrying(
@@ -315,7 +343,7 @@ class LLMClient:
                 return resp.choices[0].message
             except Exception as exc:
                 last_exc = exc
-                if "RateLimit" in type(exc).__name__:
+                if _is_rate_limit(exc):
                     await self._on_rate_limit(model, exc)
                 else:
                     self.breaker.record_failure(model)
@@ -395,11 +423,8 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        candidates = self.candidate_models(role)
-        for idx, model in enumerate(candidates):
-            est = self._estimate_tokens({"messages": messages, "max_tokens": max_tokens})
-            if not await self._admit(model, est, idx == len(candidates) - 1):
-                continue
+        est = self._estimate_tokens({"messages": messages, "max_tokens": max_tokens})
+        async for model in self._models_to_try(role, est):
             started = time.perf_counter()
             emitted = False
             prompt_tokens = completion_tokens = 0
@@ -447,7 +472,7 @@ class LLMClient:
                 return
             except Exception as exc:
                 last_exc = exc
-                if "RateLimit" in type(exc).__name__:
+                if _is_rate_limit(exc):
                     await self._on_rate_limit(model, exc)
                 else:
                     self.breaker.record_failure(model)
