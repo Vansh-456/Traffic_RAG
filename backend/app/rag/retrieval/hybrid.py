@@ -138,7 +138,9 @@ async def hybrid_search(
         STAGE_LATENCY.labels(stage).observe(dt)
 
     t0 = time.perf_counter()
-    spec = await build_filters(session, window, locations, k, use_geo=toggles.geo_filter, event_types=event_types)
+    spec = await build_filters(
+        session, window, locations, k, use_geo=toggles.geo_filter, event_types=event_types
+    )
     lap("filters", t0)
 
     t0 = time.perf_counter()
@@ -159,7 +161,9 @@ async def hybrid_search(
 
     if toggles.hybrid:
         t0 = time.perf_counter()
-        lists["fulltext"] = [cid for cid, _ in await sparse.fulltext_search(session, " ".join(queries), spec, 30)]
+        lists["fulltext"] = [
+            cid for cid, _ in await sparse.fulltext_search(session, " ".join(queries), spec, 30)
+        ]
         names = [m.mention for m in locations] + [m.name for m in locations]
         lists["trigram"] = [cid for cid, _ in await sparse.trigram_search(session, names, spec, 30)]
         lap("sparse", t0)
@@ -169,11 +173,18 @@ async def hybrid_search(
 
     t0 = time.perf_counter()
     rows = (
-        await session.execute(
-            text(_FETCH_SQL),
-            {"ids": fused, "q_geom": spec.query_geom.wkt if spec.query_geom is not None else None},
-        )
-    ).all() if fused else []
+        (
+            await session.execute(
+                text(_FETCH_SQL),
+                {
+                    "ids": fused,
+                    "q_geom": spec.query_geom.wkt if spec.query_geom is not None else None,
+                },
+            )
+        ).all()
+        if fused
+        else []
+    )
     by_id = {int(r.id): r for r in rows}
     lap("fetch", t0)
 
@@ -184,23 +195,44 @@ async def hybrid_search(
             continue
         candidates.append(
             Candidate(
-                chunk_id=cid, document_id=r.document_id, title=r.title, url=r.url, source_id=r.source_id,
-                trust_level=r.trust_level, publisher=r.publisher, authority=r.authority, language=r.language,
-                published_at=r.published_at, valid_from=r.valid_from, valid_to=r.valid_to,
-                event_type=r.event_type, severity=r.severity, text=r.text,
-                text_with_context=r.text_with_context, metadata=r.metadata or {}, geom_geojson=r.geojson,
-                distance_m=float(r.dist) if r.dist is not None else None, also_reported_by=int(r.dupes or 0),
-                ranks=ranks.get(cid, {}), rrf=scores[cid], matched_question=matched_q.get(cid),
+                chunk_id=cid,
+                document_id=r.document_id,
+                title=r.title,
+                url=r.url,
+                source_id=r.source_id,
+                trust_level=r.trust_level,
+                publisher=r.publisher,
+                authority=r.authority,
+                language=r.language,
+                published_at=r.published_at,
+                valid_from=r.valid_from,
+                valid_to=r.valid_to,
+                event_type=r.event_type,
+                severity=r.severity,
+                text=r.text,
+                text_with_context=r.text_with_context,
+                metadata=r.metadata or {},
+                geom_geojson=r.geojson,
+                distance_m=float(r.dist) if r.dist is not None else None,
+                also_reported_by=int(r.dupes or 0),
+                ranks=ranks.get(cid, {}),
+                rrf=scores[cid],
+                matched_question=matched_q.get(cid),
             )
         )
 
     t0 = time.perf_counter()
     rr = reranker if toggles.rerank else LexicalReranker()
-    rerank_scores = await rerank(queries[0], [(c.chunk_id, c.text_with_context[:2000]) for c in candidates], rr)
+    rerank_scores = await rerank(
+        queries[0], [(c.chunk_id, c.text_with_context[:2000]) for c in candidates], rr
+    )
     if not toggles.rerank:
         # without a reranker, rank purely by fused RRF (normalised to [0,1])
         top = max((c.rrf for c in candidates), default=1.0) or 1.0
-        rerank_scores = {c.chunk_id: c.rrf / top * 0.6 + rerank_scores.get(c.chunk_id, 0) * 0.4 for c in candidates}
+        rerank_scores = {
+            c.chunk_id: c.rrf / top * 0.6 + rerank_scores.get(c.chunk_id, 0) * 0.4
+            for c in candidates
+        }
     lap("rerank", t0)
 
     ref = now
@@ -220,7 +252,10 @@ async def hybrid_search(
 
     candidates.sort(key=lambda c: -c.final)
     kept, dropped = candidates[:k], candidates[k:]
-    trace = {
+    dropped_trace = [
+        {**c.trace(), "reason": "below top-k after final scoring"} for c in dropped[:20]
+    ]
+    trace: dict[str, Any] = {
         "filters": spec.trace,
         "lists": {name: ids[:15] for name, ids in lists.items()},
         "list_sizes": {name: len(ids) for name, ids in lists.items()},
@@ -231,6 +266,6 @@ async def hybrid_search(
         "toggles": asdict(toggles),
         "timings_ms": timings,
         "candidates": [c.trace() for c in kept],
-        "dropped": [{**c.trace(), "reason": "below top-k after final scoring"} for c in dropped[:20]],
+        "dropped": dropped_trace,
     }
-    return RetrievalResult(kept, trace["dropped"], trace)
+    return RetrievalResult(kept, dropped_trace, trace)

@@ -25,7 +25,7 @@ WINDOW_SECONDS = 60.0
 class RateLimiter:
     """Blocks until a request slot for `key` is available."""
 
-    def __init__(self, limit_per_minute: int, redis: Redis | None = None) -> None:
+    def __init__(self, limit_per_minute: int, redis: Redis[bytes] | None = None) -> None:
         self.limit = max(1, limit_per_minute)
         self.redis = redis
         self._local: dict[str, deque[float]] = {}
@@ -40,7 +40,9 @@ class RateLimiter:
                 return
             if time.monotonic() + wait > deadline:
                 raise TimeoutError(f"rate limit wait for {key} exceeds {max_wait}s")
-            log.info("llm rate limit reached; waiting", extra={"key": key, "wait_s": round(wait, 2)})
+            log.info(
+                "llm rate limit reached; waiting", extra={"key": key, "wait_s": round(wait, 2)}
+            )
             await asyncio.sleep(wait)
 
     async def _try_acquire(self, key: str) -> float:

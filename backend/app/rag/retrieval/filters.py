@@ -78,7 +78,9 @@ def query_geometry(locations: list[GeoMatch]) -> tuple[BaseGeometry | None, floa
 
 
 async def count_matching(session: AsyncSession, spec: FilterSpec) -> int:
-    row = await session.execute(text(f"SELECT count(*) FROM chunks c WHERE {spec.where()}"), spec.params())
+    row = await session.execute(
+        text(f"SELECT count(*) FROM chunks c WHERE {spec.where()}"), spec.params()
+    )
     return int(row.scalar_one())
 
 
@@ -99,7 +101,7 @@ async def build_filters(
         spec.trace["count"] = await count_matching(session, spec)
         return spec
     spec.use_spatial = True
-    attempts = []
+    attempts: list[dict[str, float | int | None]] = []
     for r in (radius, radius * 2):
         spec.radius_m = r
         n = await count_matching(session, spec)
@@ -111,5 +113,11 @@ async def build_filters(
     spec.radius_m = radius
     n = await count_matching(session, spec)
     attempts.append({"radius_m": None, "count": n})
-    spec.trace.update({"spatial": "dropped (too few results); proximity used in scoring", "attempts": attempts, "count": n})
+    spec.trace.update(
+        {
+            "spatial": "dropped (too few results); proximity used in scoring",
+            "attempts": attempts,
+            "count": n,
+        }
+    )
     return spec

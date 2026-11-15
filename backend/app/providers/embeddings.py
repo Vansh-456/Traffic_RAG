@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 
 import numpy as np
+import numpy.typing as npt
 
 from app.config import Settings, get_settings
 from app.observability.logging import get_logger
@@ -30,12 +31,12 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def l2_normalize(vec: np.ndarray) -> np.ndarray:
+def l2_normalize(vec: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     norm = float(np.linalg.norm(vec))
     return vec if norm == 0 else vec / norm
 
 
-def fit_dim(vec: list[float] | np.ndarray, dim: int) -> list[float]:
+def fit_dim(vec: list[float] | npt.NDArray[np.float32], dim: int) -> list[float]:
     arr = np.asarray(vec, dtype=np.float32)
     if arr.shape[0] > dim:
         arr = arr[:dim]
@@ -44,7 +45,9 @@ def fit_dim(vec: list[float] | np.ndarray, dim: int) -> list[float]:
     return [float(x) for x in l2_normalize(arr)]
 
 
-def cosine(a: list[float] | np.ndarray, b: list[float] | np.ndarray) -> float:
+def cosine(
+    a: list[float] | npt.NDArray[np.float32], b: list[float] | npt.NDArray[np.float32]
+) -> float:
     va, vb = np.asarray(a, dtype=np.float32), np.asarray(b, dtype=np.float32)
     denom = float(np.linalg.norm(va) * np.linalg.norm(vb))
     return 0.0 if denom == 0 else float(np.dot(va, vb) / denom)
@@ -156,7 +159,9 @@ def build_embedder(settings: Settings) -> Embedder:
     if settings.embedding_provider == "local":
         return LocalEmbedder(settings.embedding_dim, settings.embedding_model)
     if settings.embedding_provider == "api":
-        return ApiEmbedder(settings.embedding_dim, settings.embedding_model, settings.embedding_api_key)
+        return ApiEmbedder(
+            settings.embedding_dim, settings.embedding_model, settings.embedding_api_key
+        )
     if settings.embedding_dim != 1024:
         log.warning("EMBEDDING_DIM differs from schema dim 1024")
     return HashEmbedder(settings.embedding_dim)
