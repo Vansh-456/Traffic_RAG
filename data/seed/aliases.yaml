@@ -1,0 +1,282 @@
+# Hand-curated Delhi gazetteer seed.
+# Loaded by `copilot db seed` / `copilot ingest gazetteer` before (and merged with) OSM data.
+# Coordinates are WGS84 [lat, lon]; roads use an ordered list of waypoints (LineString).
+# Aliases cover English spellings, abbreviations, Hindi (Devanagari) and Hinglish forms.
+
+places:
+  # ---------- Junctions / areas ----------
+  - {name: ITO, type: junction, lat: 28.6289, lon: 77.2410, name_hi: आईटीओ, aliases: [Income Tax Office, ITO chowk, ITO crossing, ITO intersection, I.T.O., आई.टी.ओ., ito]}
+  - {name: AIIMS, type: junction, lat: 28.5672, lon: 77.2100, name_hi: एम्स, aliases: [AIIMS flyover, AIIMS chowk, All India Institute of Medical Sciences, Aiims crossing, एम्स चौक]}
+  - {name: Connaught Place, type: area, lat: 28.6315, lon: 77.2167, name_hi: कनॉट प्लेस, aliases: [CP, C.P., Rajiv Chowk, Connaught Circus, कनॉट प्लेस, राजीव चौक, cannaught place]}
+  - {name: India Gate, type: landmark, lat: 28.6129, lon: 77.2295, name_hi: इंडिया गेट, aliases: [India Gate C-Hexagon, C-Hexagon, इंडिया गेट]}
+  - {name: Red Fort, type: venue, lat: 28.6562, lon: 77.2410, name_hi: लाल किला, aliases: [Lal Qila, Lal Kila, Lal Quila, लाल किला, लालकिला, Netaji Subhash Marg Red Fort]}
+  - {name: Dhaula Kuan, type: junction, lat: 28.5918, lon: 77.1617, name_hi: धौला कुआं, aliases: [Dhaula Kuan flyover, Dhaulakuan, धौलाकुआं, धौला कुंआ]}
+  - {name: Ashram Chowk, type: junction, lat: 28.5714, lon: 77.2585, name_hi: आश्रम चौक, aliases: [Ashram, Ashram flyover, आश्रम]}
+  - {name: Moolchand, type: junction, lat: 28.5645, lon: 77.2343, name_hi: मूलचंद, aliases: [Moolchand flyover, Moolchand hospital crossing, मूलचंद फ्लाईओवर]}
+  - {name: Lajpat Nagar, type: area, lat: 28.5677, lon: 77.2433, name_hi: लाजपत नगर, aliases: [Lajpat Nagar market, लाजपत नगर]}
+  - {name: Nehru Place, type: area, lat: 28.5494, lon: 77.2519, name_hi: नेहरू प्लेस, aliases: [Nehru Place flyover, नेहरू प्लेस]}
+  - {name: Kashmere Gate, type: junction, lat: 28.6676, lon: 77.2280, name_hi: कश्मीरी गेट, aliases: [Kashmiri Gate, ISBT Kashmere Gate, Kashmere Gate ISBT, कश्मीरी गेट, ISBT]}
+  - {name: Sarai Kale Khan, type: junction, lat: 28.5887, lon: 77.2580, name_hi: सराय काले खां, aliases: [ISBT Sarai Kale Khan, Sarai Kale Khan ISBT, SKK, सराय काले खान]}
+  - {name: Anand Vihar, type: area, lat: 28.6469, lon: 77.3160, name_hi: आनंद विहार, aliases: [Anand Vihar ISBT, Anand Vihar Terminal, आनंद विहार]}
+  - {name: IGI Airport, type: venue, lat: 28.5562, lon: 77.1000, name_hi: आईजीआई एयरपोर्ट, aliases: [Indira Gandhi International Airport, Delhi Airport, airport, IGIA, एयरपोर्ट, हवाई अड्डा, दिल्ली एयरपोर्ट]}
+  - {name: IGI Airport Terminal 3, type: venue, lat: 28.5550, lon: 77.0844, name_hi: टर्मिनल 3, aliases: [T3, Terminal 3, T-3, टी3]}
+  - {name: IGI Airport Terminal 1, type: venue, lat: 28.5633, lon: 77.1180, name_hi: टर्मिनल 1, aliases: [T1, Terminal 1, T-1, Terminal 1D]}
+  - {name: Mahipalpur, type: area, lat: 28.5450, lon: 77.1300, name_hi: महिपालपुर, aliases: [Mahipalpur flyover, महिपालपुर]}
+  - {name: Bharat Mandapam, type: venue, lat: 28.6178, lon: 77.2433, name_hi: भारत मंडपम, aliases: [Pragati Maidan, ITPO, Pragati Maidan tunnel, भारत मंडपम, प्रगति मैदान]}
+  - {name: Ramlila Maidan, type: venue, lat: 28.6385, lon: 77.2310, name_hi: रामलीला मैदान, aliases: [Ram Leela Maidan, Ramleela ground, रामलीला मैदान]}
+  - {name: Jawaharlal Nehru Stadium, type: venue, lat: 28.5828, lon: 77.2344, name_hi: जवाहरलाल नेहरू स्टेडियम, aliases: [JLN Stadium, JLN, Nehru Stadium, जेएलएन स्टेडियम]}
+  - {name: Arun Jaitley Stadium, type: venue, lat: 28.6379, lon: 77.2432, name_hi: अरुण जेटली स्टेडियम, aliases: [Feroz Shah Kotla, Kotla, Ferozshah Kotla stadium, फिरोजशाह कोटला]}
+  - {name: Indira Gandhi Indoor Stadium, type: venue, lat: 28.6369, lon: 77.2467, name_hi: इंदिरा गांधी स्टेडियम, aliases: [IGI Stadium, IG Stadium, Indira Gandhi Stadium]}
+  - {name: Rajghat, type: landmark, lat: 28.6406, lon: 77.2495, name_hi: राजघाट, aliases: [Raj Ghat, राजघाट]}
+  - {name: Vijay Chowk, type: junction, lat: 28.6150, lon: 77.2066, name_hi: विजय चौक, aliases: [विजय चौक]}
+  - {name: Rashtrapati Bhavan, type: landmark, lat: 28.6143, lon: 77.1994, name_hi: राष्ट्रपति भवन, aliases: [President House, राष्ट्रपति भवन]}
+  - {name: Parliament House, type: landmark, lat: 28.6172, lon: 77.2081, name_hi: संसद भवन, aliases: [Sansad Bhawan, Parliament, संसद]}
+  - {name: Jantar Mantar, type: venue, lat: 28.6271, lon: 77.2166, name_hi: जंतर मंतर, aliases: [जंतर-मंतर]}
+  - {name: Mandi House, type: junction, lat: 28.6258, lon: 77.2341, name_hi: मंडी हाउस, aliases: [Mandi House roundabout, मंडी हाउस]}
+  - {name: Barakhamba Road, type: road_area, lat: 28.6297, lon: 77.2245, name_hi: बाराखंभा रोड, aliases: [Barakhamba, बाराखंभा]}
+  - {name: Delhi Gate, type: junction, lat: 28.6406, lon: 77.2405, name_hi: दिल्ली गेट, aliases: [दिल्ली गेट]}
+  - {name: Daryaganj, type: area, lat: 28.6436, lon: 77.2400, name_hi: दरियागंज, aliases: [दरियागंज]}
+  - {name: Chandni Chowk, type: market, lat: 28.6506, lon: 77.2303, name_hi: चांदनी चौक, aliases: [Chandni Chowk market, चांदनी चौक]}
+  - {name: Old Delhi Railway Station, type: station, lat: 28.6610, lon: 77.2273, name_hi: पुरानी दिल्ली रेलवे स्टेशन, aliases: [Old Delhi station, Delhi Junction, पुरानी दिल्ली]}
+  - {name: New Delhi Railway Station, type: station, lat: 28.6423, lon: 77.2196, name_hi: नई दिल्ली रेलवे स्टेशन, aliases: [NDLS, New Delhi station, Paharganj, नई दिल्ली स्टेशन]}
+  - {name: Hazrat Nizamuddin Railway Station, type: station, lat: 28.5886, lon: 77.2537, name_hi: हजरत निजामुद्दीन, aliases: [Nizamuddin station, H. Nizamuddin, निजामुद्दीन स्टेशन]}
+  - {name: Nizamuddin, type: area, lat: 28.5910, lon: 77.2460, name_hi: निजामुद्दीन, aliases: [Nizamuddin East, Nizamuddin West, निज़ामुद्दीन]}
+  - {name: Akshardham, type: landmark, lat: 28.6127, lon: 77.2773, name_hi: अक्षरधाम, aliases: [Akshardham temple, Akshardham flyover, अक्षरधाम मंदिर]}
+  - {name: Mayur Vihar, type: area, lat: 28.6046, lon: 77.2948, name_hi: मयूर विहार, aliases: [Mayur Vihar Phase 1, Mayur Vihar Phase-I, मयूर विहार]}
+  - {name: Lodhi Road, type: road_area, lat: 28.5900, lon: 77.2270, name_hi: लोधी रोड, aliases: [Lodi Road, Lodhi Colony, लोधी रोड]}
+  - {name: Khan Market, type: market, lat: 28.6003, lon: 77.2270, name_hi: खान मार्केट, aliases: [खान मार्केट]}
+  - {name: Safdarjung Hospital, type: hospital, lat: 28.5685, lon: 77.2065, name_hi: सफदरजंग अस्पताल, aliases: [Safdarjung, Safdarjang hospital, सफदरजंग]}
+  - {name: South Extension, type: market, lat: 28.5687, lon: 77.2210, name_hi: साउथ एक्सटेंशन, aliases: [South Ex, South Extn, साउथ एक्स]}
+  - {name: Defence Colony, type: area, lat: 28.5727, lon: 77.2330, name_hi: डिफेंस कॉलोनी, aliases: [Defence Colony flyover, Def Col]}
+  - {name: Hauz Khas, type: area, lat: 28.5494, lon: 77.2001, name_hi: हौज खास, aliases: [HKV, Hauz Khas Village, हौज़ ख़ास]}
+  - {name: IIT Delhi, type: landmark, lat: 28.5450, lon: 77.1926, name_hi: आईआईटी दिल्ली, aliases: [IIT gate, IIT flyover, IIT crossing, आईआईटी]}
+  - {name: Munirka, type: area, lat: 28.5574, lon: 77.1747, name_hi: मुनिरका, aliases: [मुनिरका]}
+  - {name: R K Puram, type: area, lat: 28.5660, lon: 77.1767, name_hi: आरके पुरम, aliases: [RK Puram, R.K. Puram, आर के पुरम]}
+  - {name: Bhikaji Cama Place, type: junction, lat: 28.5680, lon: 77.1870, name_hi: भीकाजी कामा प्लेस, aliases: [Bhikaji Cama, BCP]}
+  - {name: Moti Bagh, type: area, lat: 28.5800, lon: 77.1720, name_hi: मोती बाग, aliases: [Moti Bagh flyover]}
+  - {name: Vasant Kunj, type: area, lat: 28.5200, lon: 77.1580, name_hi: वसंत कुंज, aliases: [वसंत कुंज]}
+  - {name: Mehrauli, type: area, lat: 28.5245, lon: 77.1855, name_hi: महरौली, aliases: [महरौली]}
+  - {name: Qutub Minar, type: landmark, lat: 28.5245, lon: 77.1855, name_hi: कुतुब मीनार, aliases: [Qutab Minar, Qutub, कुतुब मीनार]}
+  - {name: Saket, type: area, lat: 28.5245, lon: 77.2066, name_hi: साकेत, aliases: [Select City Walk, साकेत]}
+  - {name: Badarpur Border, type: junction, lat: 28.5010, lon: 77.3020, name_hi: बदरपुर बॉर्डर, aliases: [Badarpur, बदरपुर]}
+  - {name: Kalkaji, type: area, lat: 28.5398, lon: 77.2600, name_hi: कालकाजी, aliases: [Kalkaji temple, Kalkaji Mandir, कालकाजी मंदिर]}
+  - {name: Okhla, type: area, lat: 28.5355, lon: 77.2700, name_hi: ओखला, aliases: [Okhla Phase 1, Okhla Industrial Area, ओखला]}
+  - {name: Sarita Vihar, type: area, lat: 28.5285, lon: 77.2880, name_hi: सरिता विहार, aliases: [सरिता विहार]}
+  - {name: Punjabi Bagh, type: junction, lat: 28.6684, lon: 77.1310, name_hi: पंजाबी बाग, aliases: [Punjabi Bagh flyover, पंजाबी बाग]}
+  - {name: Rajouri Garden, type: area, lat: 28.6492, lon: 77.1220, name_hi: राजौरी गार्डन, aliases: [Raja Garden, राजौरी]}
+  - {name: Janakpuri, type: area, lat: 28.6219, lon: 77.0878, name_hi: जनकपुरी, aliases: [Janak Puri, जनकपुरी]}
+  - {name: Dwarka, type: area, lat: 28.5921, lon: 77.0460, name_hi: द्वारका, aliases: [Dwarka Sector 21, द्वारका]}
+  - {name: Naraina, type: area, lat: 28.6300, lon: 77.1400, name_hi: नारायणा, aliases: [Naraina flyover, नारायणा]}
+  - {name: Karol Bagh, type: market, lat: 28.6519, lon: 77.1909, name_hi: करोल बाग, aliases: [करोल बाग]}
+  - {name: Rohini, type: area, lat: 28.7160, lon: 77.1150, name_hi: रोहिणी, aliases: [रोहिणी]}
+  - {name: Pitampura, type: area, lat: 28.7030, lon: 77.1310, name_hi: पीतमपुरा, aliases: [Pitam Pura, पीतमपुरा]}
+  - {name: Azadpur, type: junction, lat: 28.7076, lon: 77.1800, name_hi: आजादपुर, aliases: [Azadpur mandi, आज़ादपुर]}
+  - {name: Mukarba Chowk, type: junction, lat: 28.7360, lon: 77.1600, name_hi: मुकरबा चौक, aliases: [Mukarba, मुकरबा चौक]}
+  - {name: Singhu Border, type: junction, lat: 28.8035, lon: 77.0985, name_hi: सिंघु बॉर्डर, aliases: [Singhu, सिंघु]}
+  - {name: Tikri Border, type: junction, lat: 28.6880, lon: 76.9590, name_hi: टिकरी बॉर्डर, aliases: [Tikri, टिकरी]}
+  - {name: Ghazipur Border, type: junction, lat: 28.6250, lon: 77.3240, name_hi: गाजीपुर बॉर्डर, aliases: [Ghazipur, UP Gate, गाजीपुर]}
+  - {name: Shahdara, type: area, lat: 28.6730, lon: 77.2890, name_hi: शाहदरा, aliases: [शाहदरा]}
+  - {name: Laxmi Nagar, type: area, lat: 28.6304, lon: 77.2773, name_hi: लक्ष्मी नगर, aliases: [Lakshmi Nagar, लक्ष्मी नगर]}
+  - {name: Majnu Ka Tilla, type: area, lat: 28.7000, lon: 77.2270, name_hi: मजनू का टीला, aliases: [Majnu ka Tila, मजनू का टीला]}
+  - {name: Civil Lines, type: area, lat: 28.6800, lon: 77.2240, name_hi: सिविल लाइंस, aliases: [सिविल लाइन्स]}
+  - {name: Delhi University North Campus, type: area, lat: 28.6880, lon: 77.2100, name_hi: नॉर्थ कैंपस, aliases: [North Campus, DU, Delhi University, दिल्ली विश्वविद्यालय]}
+  - {name: Signature Bridge, type: bridge, lat: 28.7044, lon: 77.2324, name_hi: सिग्नेचर ब्रिज, aliases: [Wazirabad bridge, सिग्नेचर ब्रिज]}
+  - {name: Peeragarhi, type: junction, lat: 28.6800, lon: 77.0930, name_hi: पीरागढ़ी, aliases: [Peeragarhi chowk, Pira Garhi]}
+  - {name: Kartavya Path, type: road_area, lat: 28.6127, lon: 77.2200, name_hi: कर्तव्य पथ, aliases: [Rajpath, Kartavyapath, कर्तव्य पथ, राजपथ]}
+  - {name: Chirag Delhi, type: junction, lat: 28.5390, lon: 77.2280, name_hi: चिराग दिल्ली, aliases: [Chirag Dilli, Chirag Delhi flyover]}
+  - {name: Sirhaul Border, type: junction, lat: 28.4900, lon: 77.0900, name_hi: सरहौल बॉर्डर, aliases: [Sirhaul, Delhi Gurgaon border, Gurugram border, गुरुग्राम बॉर्डर]}
+  - {name: Noida Link Road, type: road_area, lat: 28.6000, lon: 77.3000, name_hi: नोएडा लिंक रोड, aliases: [Noida Mor, Noida More]}
+  - {name: Raj Niwas Marg, type: road_area, lat: 28.6790, lon: 77.2250, name_hi: राज निवास मार्ग, aliases: []}
+
+  # ---------- Major roads (LineStrings of [lat, lon] waypoints) ----------
+  - name: Ring Road
+    type: road
+    name_hi: रिंग रोड
+    aliases: [Mahatma Gandhi Marg, MG Marg Ring Road, रिंग रोड, inner ring road]
+    line:
+      - [28.6676, 77.2280]
+      - [28.6406, 77.2495]
+      - [28.6290, 77.2500]
+      - [28.5887, 77.2580]
+      - [28.5714, 77.2585]
+      - [28.5645, 77.2343]
+      - [28.5672, 77.2100]
+      - [28.5680, 77.1870]
+      - [28.5800, 77.1720]
+      - [28.5918, 77.1617]
+      - [28.6300, 77.1400]
+      - [28.6492, 77.1220]
+      - [28.6684, 77.1310]
+      - [28.7076, 77.1800]
+      - [28.7000, 77.2270]
+      - [28.6676, 77.2280]
+  - name: Outer Ring Road
+    type: road
+    name_hi: आउटर रिंग रोड
+    aliases: [ORR, Outer Ring Rd, आउटर रिंग रोड]
+    line:
+      - [28.7360, 77.1600]
+      - [28.7000, 77.1300]
+      - [28.6800, 77.0930]
+      - [28.6400, 77.0700]
+      - [28.6100, 77.0900]
+      - [28.5800, 77.1400]
+      - [28.5574, 77.1747]
+      - [28.5450, 77.1926]
+      - [28.5390, 77.2280]
+      - [28.5494, 77.2519]
+      - [28.5530, 77.2620]
+  - name: NH-48
+    type: road
+    name_hi: एनएच-48
+    aliases: [NH 48, NH48, Delhi-Gurugram Expressway, Delhi Gurgaon Expressway, NH-8, NH 8, एनएच 48]
+    line:
+      - [28.5918, 77.1617]
+      - [28.5700, 77.1450]
+      - [28.5450, 77.1300]
+      - [28.5200, 77.1000]
+      - [28.4900, 77.0900]
+  - name: DND Flyway
+    type: road
+    name_hi: डीएनडी फ्लाईवे
+    aliases: [DND, Delhi Noida Direct Flyway, डीएनडी]
+    line:
+      - [28.5800, 77.2650]
+      - [28.5760, 77.2950]
+      - [28.5700, 77.3200]
+  - name: Barapullah Elevated Road
+    type: road
+    name_hi: बारापुला
+    aliases: [Barapullah, Barapula flyover, Barapullah flyover, बारापुला एलिवेटेड रोड]
+    line:
+      - [28.5887, 77.2580]
+      - [28.5850, 77.2450]
+      - [28.5800, 77.2200]
+  - name: Vikas Marg
+    type: road
+    name_hi: विकास मार्ग
+    aliases: [विकास मार्ग]
+    line:
+      - [28.6289, 77.2410]
+      - [28.6300, 77.2600]
+      - [28.6304, 77.2773]
+      - [28.6500, 77.3000]
+  - name: Rohtak Road
+    type: road
+    name_hi: रोहतक रोड
+    aliases: [NH-9 Rohtak Road, NH 10, रोहतक रोड]
+    line:
+      - [28.6600, 77.1600]
+      - [28.6684, 77.1310]
+      - [28.6800, 77.0930]
+      - [28.6880, 76.9590]
+  - name: GT Karnal Road
+    type: road
+    name_hi: जीटी करनाल रोड
+    aliases: [G.T. Karnal Road, NH-44, NH 44, Grand Trunk Road, जीटी करनाल रोड]
+    line:
+      - [28.7076, 77.1800]
+      - [28.7360, 77.1600]
+      - [28.7980, 77.1350]
+      - [28.8035, 77.0985]
+  - name: Mehrauli-Badarpur Road
+    type: road
+    name_hi: महरौली-बदरपुर रोड
+    aliases: [MB Road, M.B. Road, Mehrauli Badarpur Road, एमबी रोड]
+    line:
+      - [28.5245, 77.1855]
+      - [28.5245, 77.2066]
+      - [28.5100, 77.2300]
+      - [28.5000, 77.2600]
+      - [28.5010, 77.3020]
+  - name: Mathura Road
+    type: road
+    name_hi: मथुरा रोड
+    aliases: [मथुरा रोड]
+    line:
+      - [28.6178, 77.2433]
+      - [28.5910, 77.2460]
+      - [28.5714, 77.2585]
+      - [28.5285, 77.2880]
+      - [28.5010, 77.3020]
+  - name: Aurobindo Marg
+    type: road
+    name_hi: अरबिंदो मार्ग
+    aliases: [Sri Aurobindo Marg, Aurobindo Road, अरविंदो मार्ग]
+    line:
+      - [28.5672, 77.2100]
+      - [28.5590, 77.2060]
+      - [28.5450, 77.1926]
+      - [28.5245, 77.1855]
+  - name: NH-9
+    type: road
+    name_hi: एनएच-9
+    aliases: [NH 9, NH-24, NH 24, Delhi-Meerut Expressway, DME, एनएच 24]
+    line:
+      - [28.5900, 77.2620]
+      - [28.6127, 77.2773]
+      - [28.6250, 77.3240]
+  - name: Kartavya Path
+    type: road
+    name_hi: कर्तव्य पथ
+    aliases: [Rajpath road, कर्तव्य पथ]
+    line:
+      - [28.6150, 77.2066]
+      - [28.6129, 77.2295]
+  - name: Bahadur Shah Zafar Marg
+    type: road
+    name_hi: बहादुर शाह जफर मार्ग
+    aliases: [BSZ Marg, B.S.Z. Marg]
+    line:
+      - [28.6289, 77.2410]
+      - [28.6406, 77.2405]
+  - name: Netaji Subhash Marg
+    type: road
+    name_hi: नेताजी सुभाष मार्ग
+    aliases: [Netaji Subhash Marg Red Fort]
+    line:
+      - [28.6406, 77.2405]
+      - [28.6562, 77.2410]
+  - name: Lodhi Road
+    type: road
+    name_hi: लोधी रोड
+    aliases: [Lodi Road]
+    line:
+      - [28.5900, 77.2150]
+      - [28.5900, 77.2420]
+  - name: Lala Lajpat Rai Marg
+    type: road
+    name_hi: लाला लाजपत राय मार्ग
+    aliases: [LLR Marg, Lala Lajpat Rai Path]
+    line:
+      - [28.5850, 77.2450]
+      - [28.5645, 77.2343]
+  - name: Dwarka Expressway
+    type: road
+    name_hi: द्वारका एक्सप्रेसवे
+    aliases: [Dwarka Expy, NH-248BB, द्वारका एक्सप्रेसवे]
+    line:
+      - [28.5700, 77.0600]
+      - [28.5400, 77.0450]
+      - [28.5000, 77.0300]
+  - name: Janpath
+    type: road
+    name_hi: जनपथ
+    aliases: [जनपथ]
+    line:
+      - [28.6315, 77.2190]
+      - [28.6129, 77.2200]
+  - name: Minto Road
+    type: road
+    name_hi: मिंटो रोड
+    aliases: [Minto bridge]
+    line:
+      - [28.6330, 77.2240]
+      - [28.6420, 77.2260]
+  - name: Pusa Road
+    type: road
+    name_hi: पूसा रोड
+    aliases: []
+    line:
+      - [28.6420, 77.2030]
+      - [28.6430, 77.1780]
