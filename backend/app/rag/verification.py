@@ -142,7 +142,7 @@ async def verify(
                     {"role": "user", "content": "\n\n".join(blocks)[:12000]},
                 ],
                 Judgements,
-                role="fast",
+                role="verify",
                 usage=usage,
                 purpose="verification",
                 max_tokens=1200,
