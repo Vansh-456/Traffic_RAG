@@ -30,7 +30,7 @@ npm-debug.log*
 # --- Data, caches, models ---
 data/raw/
 data/snapshots/
-models/
+/models/
 .cache/
 hf_cache/
 *.onnx

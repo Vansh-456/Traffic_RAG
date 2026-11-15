@@ -1,0 +1,70 @@
+name: delhi-traffic-copilot
+
+x-backend-env: &backend-env
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql+asyncpg://copilot:copilot@db:5432/copilot
+    REDIS_URL: redis://redis:6379/0
+    DATA_DIR: /data
+
+services:
+  db:
+    build:
+      context: ./infra/db
+      args:
+        APT_MIRROR: ${APT_MIRROR:-}
+    image: delhi-traffic-copilot-db:16
+    environment:
+      POSTGRES_USER: copilot
+      POSTGRES_PASSWORD: copilot
+      POSTGRES_DB: copilot
+    ports: ["${DB_HOST_PORT:-5433}:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U copilot -d copilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["${REDIS_HOST_PORT:-6380}:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        INSTALL_LOCAL_ML: ${INSTALL_LOCAL_ML:-0}
+        APT_MIRROR: ${APT_MIRROR:-}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    image: delhi-traffic-copilot-backend
+    <<: *backend-env
+    ports: ["8000:8000"]
+    volumes: [rawdata:/data, models:/models]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    image: delhi-traffic-copilot-backend
+    <<: *backend-env
+    command: ["python", "-m", "app.worker"]
+    volumes: [rawdata:/data, models:/models]
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  models:
+  pgdata:
+  redisdata:
+  rawdata:
