@@ -24,6 +24,8 @@ log = get_logger(__name__)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
+    if settings.app_env == "production" and settings.admin_token in ("", "change-me-admin-token"):
+        raise RuntimeError("ADMIN_TOKEN must be set to a strong secret in production")
     try:
         await get_redis().ping()
         attach_redis(get_redis())
@@ -72,6 +74,9 @@ def create_app() -> FastAPI:
             response = await call_next(request)
             status = response.status_code
             response.headers["x-request-id"] = rid
+            response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            response.headers.setdefault("X-Frame-Options", "DENY")
+            response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
             return response
         finally:
             route = request.scope.get("route")
