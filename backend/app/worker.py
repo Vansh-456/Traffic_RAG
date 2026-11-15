@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import signal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -24,6 +25,7 @@ from app.providers.llm import attach_redis
 from app.redis_client import CHANNEL_NEW_CHUNK, get_redis
 
 log = get_logger("worker")
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
 async def bootstrap() -> None:

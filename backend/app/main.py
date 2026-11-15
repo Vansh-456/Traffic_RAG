@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import os
 import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -19,11 +21,20 @@ from app.redis_client import get_redis
 
 log = get_logger(__name__)
 
+# use LiteLLM's bundled model/price map instead of downloading it at import time
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
+    # importing LiteLLM takes 10-20 s; do it in the background so no request pays for it
+    warmup = (
+        asyncio.create_task(asyncio.to_thread(__import__, "litellm"))
+        if settings.llm_enabled
+        else None
+    )
     if settings.app_env == "production" and settings.admin_token in ("", "change-me-admin-token"):
         raise RuntimeError("ADMIN_TOKEN must be set to a strong secret in production")
     try:
@@ -44,6 +55,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         if not enabled:
             log.info("feature disabled (missing config)", extra={"feature": feature})
     yield
+    if warmup is not None and not warmup.done():
+        warmup.cancel()
 
 
 def create_app() -> FastAPI:
