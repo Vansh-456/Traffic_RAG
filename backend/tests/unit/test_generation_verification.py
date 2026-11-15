@@ -149,3 +149,25 @@ def test_split_keeps_list_markers_with_items():
     assert parts[1].startswith("1. Festival") and parts[2].startswith("2. Heavy")
     assert _tidy(["**Likely causes:**", "1.", "2.", "**Tips:**"]) == []
     assert _tidy(["**Tips:**", "- Use the metro."]) == ["**Tips:**", "- Use the metro."]
+
+
+def test_alt_citations_are_normalised_in_stream():
+    s = gen.FollowupStripper()
+    shown = (
+        "".join(s.feed(t) for t in ["Yamuna ghats closed 【", "3†source】 and more【1】."])
+        + s.flush()
+    )
+    assert shown == "Yamuna ghats closed [3] and more[1]."
+    assert gen.cited_ids("x 【2】 y") == {2}
+
+
+def test_non_claims_are_not_checked():
+    from app.rag.verification import is_checkable
+
+    assert not is_checkable("**What to watch for**")
+    assert not is_checkable("For real-time updates, check traffic.delhipolice.gov.in or call 1095.")
+    assert not is_checkable("- Use public transport where possible.")
+    assert is_checkable(
+        "- Use parallel roads such as Ring Road instead of the closed sections."
+    )  # names a road
+    assert is_checkable("Schools in the affected zones are closed on 16 Nov.")

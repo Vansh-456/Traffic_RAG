@@ -93,9 +93,34 @@ def _tidy(lines: list[str]) -> list[str]:
     return cleaned
 
 
+_BOLD_LINE = re.compile(r"^\W*\*\*[^*]+\*\*\W*$")
+_OFFICIAL = re.compile(
+    r"traffic\.delhipolice\.gov\.in|1095|25844444|@dtptraffic|helpline|हेल्पलाइन", re.I
+)
+_ADVICE = re.compile(
+    r"^(use|check|consider|leave|plan|avoid|follow|keep|allow|prefer|stay|try|take|carry|drive|"
+    r"if you|for (the )?(latest|real.time)|please|अपनाएं|बचें|देखें|करें)\b",
+    re.I,
+)
+
+
+def is_generic_advice(sentence: str) -> bool:
+    """Uncited advice with no specifics (no numbers, no named places) isn't a factual claim."""
+    plain = re.sub(r"[*_`]", "", sentence).strip().lstrip("-•0123456789.) ").strip()
+    if cited_ids(sentence) or re.search(r"\d", plain) or not _ADVICE.match(plain):
+        return False
+    from app.ingestion.geocoding import get_geocoder
+
+    return not get_geocoder().index.find_mentions(plain)
+
+
 def is_checkable(sentence: str) -> bool:
     plain = sentence.strip().strip("*#-• ").strip()
-    if plain.endswith(":") or sentence.lstrip().startswith("#"):  # headings / labels
+    if plain.endswith(":") or sentence.lstrip().startswith("#") or _BOLD_LINE.match(sentence):
+        return False  # headings / labels
+    if _OFFICIAL.search(sentence) and not cited_ids(sentence):
+        return False  # official channels come from the system prompt, not the evidence
+    if is_generic_advice(sentence):
         return False
     words = _WORD.findall(sentence)
     return len(words) >= 4 and not _SKIP.match(plain) and not sentence.startswith("<")
