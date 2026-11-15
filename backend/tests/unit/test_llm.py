@@ -106,3 +106,39 @@ async def test_disabled_without_keys():
     )
     with pytest.raises(LLMUnavailableError):
         await c.complete([{"role": "user", "content": "x"}])
+
+
+async def test_saturated_groq_model_falls_back_without_waiting(monkeypatch):
+    c = LLMClient(_settings(llm_tpm_limit=1000, llm_max_queue_seconds=1))
+    await c.tpm.reserve("groq/openai/gpt-oss-20b", 1000)  # budget used up
+    seen = []
+
+    async def fake(model, **kw):
+        seen.append(model)
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert seen == ["gemini/gemini-3.5-flash"]
+
+
+async def test_rate_limit_sets_cooldown_not_breaker(monkeypatch):
+    c = LLMClient(_settings(llm_max_retries=1))
+
+    class RateLimitError(Exception):
+        pass
+
+    async def fake(model, **kw):
+        if model.startswith("groq"):
+            raise RateLimitError("Rate limit reached ... Please try again in 7.5s.")
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert not c.breaker.is_open("groq/openai/gpt-oss-20b")
+    assert 6 < await c.tpm.wait_seconds("groq/openai/gpt-oss-20b", 1) <= 7.5
+
+
+def test_verify_role_candidates():
+    c = LLMClient(_settings())
+    assert c.candidate_models("verify") == ["gemini/gemini-3.5-flash", "groq/openai/gpt-oss-20b"]

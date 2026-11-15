@@ -62,10 +62,14 @@ class Settings(BaseSettings):
     llm_model_answer: str = "groq/openai/gpt-oss-120b"
     llm_model_fast: str = "groq/openai/gpt-oss-20b"
     llm_model_fallback: str = "gemini/gemini-3.5-flash"
+    llm_model_verify: str = "gemini/gemini-3.5-flash"  # off the critical path; separate quota
     llm_rpm_limit: int = 28
-    llm_rpm_limit_background: int = (
-        12  # worker/ingestion share of the RPM window (chat gets the rest)
-    )
+    # worker/ingestion share of the RPM window (chat gets the rest)
+    llm_rpm_limit_background: int = 12
+    # tokens/minute per Groq model (free tier: 8,000)
+    llm_tpm_limit: int = 7500
+    # if a model needs longer than this to free budget, use the fallback model instead
+    llm_max_queue_seconds: float = 2.5
     llm_reasoning_effort: str = "low"  # gpt-oss models: low | medium | high
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 3

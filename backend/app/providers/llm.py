@@ -14,6 +14,7 @@ Features:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -32,11 +33,11 @@ from tenacity import (
 from app.config import Settings, get_settings
 from app.observability.logging import get_logger
 from app.observability.metrics import LLM_CALLS, LLM_TOKENS
-from app.providers.ratelimit import RateLimiter
+from app.providers.ratelimit import RateLimiter, TokenBudget
 
 log = get_logger(__name__)
 
-Role = Literal["answer", "fast"]
+Role = Literal["answer", "fast", "verify"]
 T = TypeVar("T", bound=BaseModel)
 
 # Rough USD per 1M tokens (input, output) for cost estimates in internals.
@@ -117,7 +118,6 @@ class CircuitBreaker:
 def _is_transient(exc: BaseException) -> bool:
     name = type(exc).__name__
     transient = (
-        "RateLimitError",
         "Timeout",
         "APIConnectionError",
         "ServiceUnavailableError",
@@ -154,6 +154,7 @@ class LLMClient:
         self.settings = settings or get_settings()
         self.limiter = limiter or RateLimiter(self.settings.llm_rpm_limit)
         self.breaker = CircuitBreaker()
+        self.tpm = TokenBudget(self.settings.llm_tpm_limit)
         # background clients (worker, CLI ingestion) yield RPM headroom to interactive chat
         self.background = False
         self._push_keys_to_env()
@@ -177,7 +178,11 @@ class LLMClient:
                 os.environ[key] = value
 
     def model_for(self, role: Role) -> str:
-        return self.settings.llm_model_answer if role == "answer" else self.settings.llm_model_fast
+        if role == "answer":
+            return self.settings.llm_model_answer
+        if role == "verify":
+            return self.settings.llm_model_verify
+        return self.settings.llm_model_fast
 
     def _key_available(self, model: str) -> bool:
         prefix = model.split("/", 1)[0]
@@ -192,8 +197,10 @@ class LLMClient:
 
     def candidate_models(self, role: Role) -> list[str]:
         models = [self.model_for(role)]
-        if self.settings.llm_model_fallback not in models:
-            models.append(self.settings.llm_model_fallback)
+        if role == "verify":
+            models.append(self.settings.llm_model_fast)
+        models.append(self.settings.llm_model_fallback)
+        models = list(dict.fromkeys(models))
         usable = [m for m in models if self._key_available(m) and not self.breaker.is_open(m)]
         if not usable:
             # all circuits open: try anyway with keys available (half-open)
@@ -207,6 +214,37 @@ class LLMClient:
             # reasoning models: keep hidden reasoning short (latency + token budget)
             return {"extra_body": {"reasoning_effort": self.settings.llm_reasoning_effort}}
         return {}
+
+    @staticmethod
+    def _estimate_tokens(kwargs: dict[str, Any]) -> int:
+        """Groq counts prompt + max_tokens against TPM; estimate both (~4 chars/token)."""
+        chars = sum(len(str(m.get("content") or "")) for m in kwargs.get("messages", []))
+        if kwargs.get("tools"):
+            chars += len(json.dumps(kwargs["tools"]))
+        return chars // 4 + int(kwargs.get("max_tokens") or 512)
+
+    async def _admit(self, model: str, tokens: int, is_last: bool) -> bool:
+        """Reserve TPM budget; False = this model is saturated, use the next candidate."""
+        if not model.startswith("groq/"):
+            return True
+        wait = await self.tpm.wait_seconds(model, tokens)
+        threshold = 60.0 if self.background else self.settings.llm_max_queue_seconds
+        if wait > threshold and not is_last:
+            log.info(
+                "model token budget saturated; using fallback",
+                extra={"model": model, "wait_s": round(wait, 1)},
+            )
+            return False
+        if wait > 0:
+            await asyncio.sleep(min(wait, 60.0))
+        await self.tpm.reserve(model, tokens)
+        return True
+
+    async def _on_rate_limit(self, model: str, exc: BaseException) -> None:
+        """Honour the provider's 'try again in Ns' hint as a cooldown (not a breaker failure)."""
+        m = re.search(r"try again in ([0-9.]+)\s*(ms|s)", str(exc))
+        seconds = float(m.group(1)) / (1000 if m and m.group(2) == "ms" else 1) if m else 10.0
+        await self.tpm.block(model, seconds)
 
     async def _acompletion(self, model: str, **kwargs: Any) -> Any:
         import litellm
@@ -239,7 +277,8 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        for model in self.candidate_models(role):
+        candidates = self.candidate_models(role)
+        for idx, model in enumerate(candidates):
             kwargs: dict[str, Any] = {
                 "messages": messages,
                 "temperature": temperature,
@@ -250,6 +289,10 @@ class LLMClient:
             if tools:
                 kwargs["tools"] = tools
                 kwargs["tool_choice"] = "auto"
+            if not await self._admit(
+                model, self._estimate_tokens(kwargs), idx == len(candidates) - 1
+            ):
+                continue
             started = time.perf_counter()
             try:
                 async for attempt in AsyncRetrying(
@@ -266,7 +309,10 @@ class LLMClient:
                 return resp.choices[0].message
             except Exception as exc:
                 last_exc = exc
-                self.breaker.record_failure(model)
+                if "RateLimit" in type(exc).__name__:
+                    await self._on_rate_limit(model, exc)
+                else:
+                    self.breaker.record_failure(model)
                 LLM_CALLS.labels(model, "error").inc()
                 log.warning(
                     "llm call failed; trying fallback",
@@ -343,7 +389,11 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        for model in self.candidate_models(role):
+        candidates = self.candidate_models(role)
+        for idx, model in enumerate(candidates):
+            est = self._estimate_tokens({"messages": messages, "max_tokens": max_tokens})
+            if not await self._admit(model, est, idx == len(candidates) - 1):
+                continue
             started = time.perf_counter()
             emitted = False
             prompt_tokens = completion_tokens = 0
@@ -391,7 +441,10 @@ class LLMClient:
                 return
             except Exception as exc:
                 last_exc = exc
-                self.breaker.record_failure(model)
+                if "RateLimit" in type(exc).__name__:
+                    await self._on_rate_limit(model, exc)
+                else:
+                    self.breaker.record_failure(model)
                 LLM_CALLS.labels(model, "error").inc()
                 log.warning("llm stream failed", extra={"model": model, "err": str(exc)[:300]})
                 if emitted:
@@ -424,3 +477,4 @@ def get_llm() -> LLMClient:
 def attach_redis(redis: Any) -> None:
     """Share the RPM window across processes once Redis is connected."""
     get_llm().limiter.redis = redis
+    get_llm().tpm.redis = redis
