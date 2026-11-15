@@ -43,6 +43,19 @@ def delta_hours(
     return 24 * 30
 
 
+def window_gap_hours(
+    w_start: datetime, w_end: datetime, valid_from: datetime | None, valid_to: datetime | None
+) -> float:
+    """Hours between the query window and a validity window (0 when they overlap)."""
+    vf = valid_from or valid_to
+    vt = valid_to or valid_from
+    assert vf is not None and vt is not None
+    if vf <= w_end and vt >= w_start:
+        return 0.0
+    gap = (vf - w_end) if vf > w_end else (w_start - vt)
+    return abs(gap.total_seconds()) / 3600
+
+
 def freshness(intent: str, dt_hours: float, enabled: bool = True) -> float:
     tau = TAU_HOURS.get(intent, 168)
     if not enabled or tau is None:

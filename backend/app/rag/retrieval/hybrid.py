@@ -208,7 +208,11 @@ async def hybrid_search(
         ref = window.start + (window.end - window.start) / 2
     for c in candidates:
         c.rerank = rerank_scores.get(c.chunk_id, 0.0)
-        dt = freshness.delta_hours(ref, c.valid_from, c.valid_to, c.published_at)
+        if window is not None and (c.valid_from or c.valid_to):
+            # relevant for the *asked* window: no decay while validity overlaps it
+            dt = freshness.window_gap_hours(window.start, window.end, c.valid_from, c.valid_to)
+        else:
+            dt = freshness.delta_hours(ref, c.valid_from, c.valid_to, c.published_at)
         c.freshness = freshness.freshness(intent, dt, enabled=toggles.freshness)
         c.trust = freshness.trust(c.trust_level)
         c.proximity = freshness.proximity(c.distance_m, spec.radius_m)
