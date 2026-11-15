@@ -66,7 +66,39 @@ python -m app.cli ingest backfill-dtp            # optional: full historical cra
 ```
 After that the worker keeps everything fresh (DTP and news every 30 min, TomTom adaptive, weather hourly).
 
-## 5. Keys & features
+## 5. Running on free LLM tiers (Groq + Gemini)
+
+Measured on Groq's free tier (Nov 2026): every model has its own **8,000 tokens/minute**
+quota, and Groq counts `max_tokens` against it even when it isn't used. One fully verified answer
+costs ~4–6k tokens across 4 calls. The client therefore:
+
+| Role | Default model | Fallback chain |
+|---|---|---|
+| answer (streamed) | `groq/openai/gpt-oss-120b` | gpt-oss-20b → Gemini |
+| fast (understanding, enrichment) | `groq/openai/gpt-oss-20b` | qwen3.8-27b → Gemini |
+| route + verify | `groq/qwen/qwen3.8-27b` | gpt-oss-20b → Gemini |
+
+- A Redis-shared tokens-per-minute budget (`LLM_TPM_LIMIT=7500`) reserves each call's tokens.
+  When a model would need more than `LLM_MAX_QUEUE_SECONDS` (2.5 s) to free up, the next model
+  in the chain is used immediately. Waiting ≤ 8 s for the soonest Groq model is preferred over Gemini,
+  whose free tier is slow (4–40 s) and quickly returns 429.
+- Provider "try again in N s" hints become cooldowns, not circuit-breaker failures.
+- The worker (ingestion) may use only half of each budget (`LLM_RPM_LIMIT_BACKGROUND`, TPM share),
+  so chat is never starved.
+- `REGENERATE_UNSUPPORTED=false` is recommended on free tiers: regeneration roughly doubles a
+  question's tokens; the hedged/trimmed revision is kept either way.
+- `gpt-oss` models run with `LLM_REASONING_EFFORT=low`.
+
+Observed with this setup, one user asking every ~20 s: **first token p50 ≈ 2 s** (1.6–4.2 s),
+full answer 3–6 s. Occasional 15–25 s outliers happen when Groq's own window is still full from
+earlier traffic. Sustained capacity is roughly 3–4 questions/minute. A paid Groq tier removes
+this limit without code changes.
+
+Models get retired. If `/health` shows `llm: true` but answers fall back to extractive mode, list
+the models your keys can use (`GET https://api.groq.com/openai/v1/models`) and update
+`LLM_MODEL_*` in `.env`.
+
+## 6. Keys & features
 
 | Variable | Feature | Without it |
 |---|---|---|
@@ -78,7 +110,7 @@ After that the worker keeps everything fresh (DTP and news every 30 min, TomTom 
 
 Generate VAPID keys: `npx web-push generate-vapid-keys`.
 
-## 6. Verification checklist
+## 7. Verification checklist
 
 - `GET https://<api>/ready` → `{"status":"ok"}`
 - Admin page (`/admin`, ADMIN_TOKEN) shows sources with `ok` status after the first worker cycle.
