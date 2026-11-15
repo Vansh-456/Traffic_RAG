@@ -21,6 +21,7 @@ import { useChat } from "@/lib/useChat";
 
 import { AnswerText } from "./AnswerText";
 import { Cards } from "./Cards";
+import { InternalsDrawer } from "./InternalsDrawer";
 import { Badge, Button, Skeleton } from "./ui";
 
 const EXAMPLES = [
@@ -177,6 +178,7 @@ export function ChatPanel({ onHighlights }: { onHighlights: (fc: FeatureCollecti
     void send(q);
     setInput("");
   };
+  const drawerMsg = messages.find((m) => m.id === drawer);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -277,6 +279,11 @@ export function ChatPanel({ onHighlights }: { onHighlights: (fc: FeatureCollecti
           </Button>
         )}
       </form>
+      <InternalsDrawer
+        open={drawer !== null}
+        onOpenChange={(o) => !o && setDrawer(null)}
+        internals={drawerMsg?.internals}
+      />
     </div>
   );
 }
