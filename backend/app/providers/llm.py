@@ -42,8 +42,8 @@ T = TypeVar("T", bound=BaseModel)
 # Rough USD per 1M tokens (input, output) for cost estimates in internals.
 PRICING: dict[str, tuple[float, float]] = {
     "groq/openai/gpt-oss-120b": (0.15, 0.75),
-    "groq/llama-3.1-8b-instant": (0.05, 0.08),
-    "gemini/gemini-2.0-flash": (0.10, 0.40),
+    "groq/openai/gpt-oss-20b": (0.075, 0.30),
+    "gemini/gemini-3.5-flash": (0.30, 2.50),
 }
 
 
@@ -201,6 +201,9 @@ class LLMClient:
     def _extra_kwargs(self, model: str) -> dict[str, Any]:
         if model.startswith("ollama"):
             return {"api_base": self.settings.ollama_base_url}
+        if "gpt-oss" in model:
+            # reasoning models: keep hidden reasoning short (latency + token budget)
+            return {"extra_body": {"reasoning_effort": self.settings.llm_reasoning_effort}}
         return {}
 
     async def _acompletion(self, model: str, **kwargs: Any) -> Any:
@@ -338,6 +341,10 @@ class LLMClient:
             started = time.perf_counter()
             emitted = False
             prompt_tokens = completion_tokens = 0
+            streamed_chars = 0
+            # LiteLLM's Groq stream parser crashes on the usage-only final chunk,
+            # so only request it from other providers; estimate usage otherwise.
+            extra = {} if model.startswith("groq/") else {"stream_options": {"include_usage": True}}
             try:
                 resp = await self._acompletion(
                     model,
@@ -345,7 +352,7 @@ class LLMClient:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     stream=True,
-                    stream_options={"include_usage": True},
+                    **extra,
                 )
                 async for chunk in resp:
                     u = getattr(chunk, "usage", None)
@@ -358,7 +365,11 @@ class LLMClient:
                     text = getattr(delta, "content", None)
                     if text:
                         emitted = True
+                        streamed_chars += len(text)
                         yield text
+                if not completion_tokens:
+                    prompt_tokens = sum(len(str(m.get("content") or "")) for m in messages) // 4
+                    completion_tokens = streamed_chars // 4
                 self.breaker.record_success(model)
                 LLM_CALLS.labels(model, "ok").inc()
                 if usage is not None:

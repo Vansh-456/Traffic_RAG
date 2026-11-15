@@ -60,9 +60,10 @@ class Settings(BaseSettings):
     # --- LLM ---
     llm_provider: str = "groq"
     llm_model_answer: str = "groq/openai/gpt-oss-120b"
-    llm_model_fast: str = "groq/llama-3.1-8b-instant"
-    llm_model_fallback: str = "gemini/gemini-2.0-flash"
+    llm_model_fast: str = "groq/openai/gpt-oss-20b"
+    llm_model_fallback: str = "gemini/gemini-3.5-flash"
     llm_rpm_limit: int = 28
+    llm_reasoning_effort: str = "low"  # gpt-oss models: low | medium | high
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 3
     groq_api_key: str = ""

@@ -40,12 +40,12 @@ def test_extract_json_variants():
 
 def test_candidate_models_respects_keys_and_breaker():
     c = LLMClient(_settings(gemini_api_key=""))
-    assert c.candidate_models("fast") == ["groq/llama-3.1-8b-instant"]
+    assert c.candidate_models("fast") == ["groq/openai/gpt-oss-20b"]
     c2 = LLMClient(_settings())
-    assert c2.candidate_models("answer") == ["groq/openai/gpt-oss-120b", "gemini/gemini-2.0-flash"]
+    assert c2.candidate_models("answer") == ["groq/openai/gpt-oss-120b", "gemini/gemini-3.5-flash"]
     for _ in range(3):
         c2.breaker.record_failure("groq/openai/gpt-oss-120b")
-    assert c2.candidate_models("answer") == ["gemini/gemini-2.0-flash"]
+    assert c2.candidate_models("answer") == ["gemini/gemini-3.5-flash"]
 
 
 def test_circuit_breaker_cooldown():
@@ -91,7 +91,7 @@ async def test_fallback_model_used_on_failure(monkeypatch):
 
     monkeypatch.setattr(c, "_acompletion", fake)
     assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
-    assert seen == ["groq/llama-3.1-8b-instant", "gemini/gemini-2.0-flash"]
+    assert seen == ["groq/openai/gpt-oss-20b", "gemini/gemini-3.5-flash"]
 
 
 async def test_disabled_without_keys():
