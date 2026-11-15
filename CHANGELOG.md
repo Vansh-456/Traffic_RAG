@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-15 — Phase 11: Hardening & deployment
+
+### Added
+- Production guard: refuses the default ADMIN_TOKEN; security headers on API and web responses
+- Strict mypy clean (82 files), ruff clean; worker healthcheck; hash-pinned backend lockfile with mirror build args
+- PWA manifest + service worker (offline shell, push); Makefile (up, seed, seed-full, eval, simulate-alert)
+- Deployment guide for Railway/Render/Fly.io + Vercel + Neon/Supabase; full docker compose stack verified (db, redis, api, worker, web)
+
 ## [0.10.0] - 2026-11-15 — Phase 10: Evaluation
 
 ### Added

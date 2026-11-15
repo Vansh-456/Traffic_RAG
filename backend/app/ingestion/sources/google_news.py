@@ -175,7 +175,9 @@ async def collect_gdelt(fetcher: PoliteFetcher, days: int = 180) -> list[Documen
             if not url or not is_relevant(title, title + " delhi"):
                 continue
             seen = art.get("seendate")
-            published = datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC) if seen else None
+            published = (
+                datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC) if seen else None
+            )
             out.setdefault(
                 url,
                 DocumentDraft(

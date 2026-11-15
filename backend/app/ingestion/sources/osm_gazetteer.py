@@ -110,7 +110,9 @@ def parse_pois(payload: dict[str, Any]) -> list[OsmPlace]:
                 lon=float(lon),
                 geom_wkt=None,
                 importance=importance,
-                tags={k: v for k, v in tags.items() if k in ("highway", "amenity", "railway", "ref")},
+                tags={
+                    k: v for k, v in tags.items() if k in ("highway", "amenity", "railway", "ref")
+                },
             )
         )
     return out
@@ -134,9 +136,15 @@ def parse_roads(payload: dict[str, Any]) -> list[OsmPlace]:
         simplified = merged.simplify(0.0003, preserve_topology=False)
         if simplified.is_empty:
             continue
-        c = simplified.interpolate(0.5, normalized=True) if simplified.geom_type == "LineString" else simplified.centroid
+        c = (
+            simplified.interpolate(0.5, normalized=True)
+            if simplified.geom_type == "LineString"
+            else simplified.centroid
+        )
         tags = meta[name]
-        importance = {"motorway": 0.9, "trunk": 0.8, "primary": 0.6}.get(tags.get("highway", ""), 0.5)
+        importance = {"motorway": 0.9, "trunk": 0.8, "primary": 0.6}.get(
+            tags.get("highway", ""), 0.5
+        )
         out.append(
             OsmPlace(
                 osm_id=f"road/{normalize_mention(name).replace(' ', '-')}",
@@ -156,10 +164,12 @@ def parse_roads(payload: dict[str, Any]) -> list[OsmPlace]:
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=5, max=60))
 async def _overpass(query: str) -> dict[str, Any]:
     settings = get_settings()
-    async with httpx.AsyncClient(timeout=300, headers={"User-Agent": settings.user_agent}) as client:
+    async with httpx.AsyncClient(
+        timeout=300, headers={"User-Agent": settings.user_agent}
+    ) as client:
         resp = await client.post(settings.overpass_url, data={"data": query})
         resp.raise_for_status()
-        return resp.json()  # type: ignore[no-any-return]
+        return resp.json()
 
 
 def _search_text(name: str, name_hi: str | None, aliases: list[str]) -> str:
@@ -217,9 +227,7 @@ async def import_osm(session: AsyncSession) -> dict[str, int]:
     import json
 
     seed_names = {
-        normalize_mention(n)
-        for p in load_seed_places(seed_path())
-        for n in p.all_names()
+        normalize_mention(n) for p in load_seed_places(seed_path()) for n in p.all_names()
     }
     pois = parse_pois(await _overpass(OVERPASS_POI_QUERY))
     roads = parse_roads(await _overpass(OVERPASS_ROADS_QUERY))

@@ -38,13 +38,27 @@ INCIDENT_FIELDS = (
     "events{description,code,iconCategory},startTime,endTime,from,to,length,delay,roadNumbers}}}"
 )
 ICON_CATEGORY = {
-    0: "unknown", 1: "accident", 2: "fog", 3: "dangerous_conditions", 4: "rain", 5: "ice",
-    6: "jam", 7: "lane_closed", 8: "road_closed", 9: "road_works", 10: "wind", 11: "flooding",
+    0: "unknown",
+    1: "accident",
+    2: "fog",
+    3: "dangerous_conditions",
+    4: "rain",
+    5: "ice",
+    6: "jam",
+    7: "lane_closed",
+    8: "road_closed",
+    9: "road_works",
+    10: "wind",
+    11: "flooding",
     14: "broken_down_vehicle",
 }
 EVENT_TYPE_FOR_CATEGORY = {
-    "accident": "accident", "road_closed": "closure", "lane_closed": "closure",
-    "road_works": "roadwork", "flooding": "waterlogging", "broken_down_vehicle": "breakdown",
+    "accident": "accident",
+    "road_closed": "closure",
+    "lane_closed": "closure",
+    "road_works": "roadwork",
+    "flooding": "waterlogging",
+    "broken_down_vehicle": "breakdown",
     "jam": "other",
 }
 DAY_INTERVAL_MIN = 15
@@ -69,7 +83,7 @@ def is_night(dt: datetime) -> bool:
 class BudgetManager:
     """Daily TomTom request budget with adaptive polling cadence."""
 
-    def __init__(self, redis: Redis, daily_budget: int | None = None) -> None:
+    def __init__(self, redis: Redis[bytes], daily_budget: int | None = None) -> None:
         self.redis = redis
         self.cap = daily_budget or get_settings().tomtom_daily_budget
 
@@ -84,15 +98,19 @@ class BudgetManager:
 
     async def try_spend(self, n: int, now: datetime | None = None) -> bool:
         now = now or now_ist()
-        result = await self.redis.eval(_SPEND_LUA, 1, self._day_key(now), n, self.cap)  # type: ignore[misc]
+        result = await self.redis.eval(_SPEND_LUA, 1, self._day_key(now), n, self.cap)  # type: ignore[no-untyped-call]
         ok = int(result) >= 0
         if ok:
             TOMTOM_BUDGET_USED.set(int(result))
         return ok
 
-    def planned_requests(self, now: datetime, cost_per_cycle: int, base_scale: float = 1.0) -> float:
+    def planned_requests(
+        self, now: datetime, cost_per_cycle: int, base_scale: float = 1.0
+    ) -> float:
         """Requests needed from `now` to midnight IST at base cadence × scale."""
-        end = (now.astimezone(IST) + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = (now.astimezone(IST) + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
         total, t = 0.0, now.astimezone(IST)
         while t < end:
             step = (NIGHT_INTERVAL_MIN if is_night(t) else DAY_INTERVAL_MIN) * base_scale
@@ -117,7 +135,9 @@ class BudgetManager:
             return False
         last_raw = await self.redis.get(f"tomtom:last:{kind}")
         if last_raw:
-            last = datetime.fromisoformat(last_raw.decode() if isinstance(last_raw, bytes) else last_raw)
+            last = datetime.fromisoformat(
+                last_raw.decode() if isinstance(last_raw, bytes) else last_raw
+            )
             if now - last < timedelta(minutes=interval) - timedelta(seconds=30):
                 return False
         return True
@@ -129,7 +149,12 @@ class BudgetManager:
     async def status(self) -> dict[str, Any]:
         now = now_ist()
         used = await self.used(now)
-        return {"date": now.date().isoformat(), "used": used, "cap": self.cap, "remaining": self.cap - used}
+        return {
+            "date": now.date().isoformat(),
+            "used": used,
+            "cap": self.cap,
+            "remaining": self.cap - used,
+        }
 
 
 @dataclass
@@ -163,7 +188,9 @@ def parse_flow(segment_id: str, payload: dict[str, Any]) -> FlowObs | None:
     d = payload.get("flowSegmentData")
     if not d:
         return None
-    coords = [(c["longitude"], c["latitude"]) for c in d.get("coordinates", {}).get("coordinate", [])]
+    coords = [
+        (c["longitude"], c["latitude"]) for c in d.get("coordinates", {}).get("coordinate", [])
+    ]
     return FlowObs(
         segment_id=segment_id,
         current_speed=float(d.get("currentSpeed", 0)),

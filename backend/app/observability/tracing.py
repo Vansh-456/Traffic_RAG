@@ -37,7 +37,9 @@ class Trace:
         client = _client()
         if client is not None:
             try:
-                self._trace = client.trace(name=name, input=input, metadata={"request_id": request_id_var.get()})
+                self._trace = client.trace(
+                    name=name, input=input, metadata={"request_id": request_id_var.get()}
+                )
             except Exception as exc:
                 log.warning("langfuse trace failed", extra={"err": str(exc)[:200]})
 
@@ -55,7 +57,8 @@ class Trace:
         try:
             for call in getattr(usage, "calls", []):
                 self._trace.generation(
-                    name=call["purpose"], model=call["model"],
+                    name=call["purpose"],
+                    model=call["model"],
                     usage={"input": call["prompt_tokens"], "output": call["completion_tokens"]},
                     metadata={"latency_ms": call["latency_ms"]},
                 )

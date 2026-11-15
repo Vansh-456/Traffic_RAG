@@ -48,7 +48,9 @@ def language_match(answer: str, expected: str) -> bool:
     return detected in ("en", "hinglish")
 
 
-def citation_accuracy(cited_docs: Sequence[str], gold: set[str], supported_flags: Sequence[bool]) -> float:
+def citation_accuracy(
+    cited_docs: Sequence[str], gold: set[str], supported_flags: Sequence[bool]
+) -> float:
     """Share of citations that (a) point to a gold doc or (b) were judged supporting."""
     if not cited_docs and not supported_flags:
         return 1.0

@@ -28,7 +28,10 @@ PROXIMITY_ALPHA = 0.3
 
 
 def delta_hours(
-    ref: datetime, valid_from: datetime | None, valid_to: datetime | None, published_at: datetime | None
+    ref: datetime,
+    valid_from: datetime | None,
+    valid_to: datetime | None,
+    published_at: datetime | None,
 ) -> float:
     if valid_from or valid_to:
         start = valid_from or valid_to

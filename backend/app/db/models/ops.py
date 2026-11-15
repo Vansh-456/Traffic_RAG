@@ -44,7 +44,9 @@ class EvalQuestion(Base, TimestampMixin):
     tags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     eval_clock: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(16), default="draft")  # draft|approved|rejected
-    origin: Mapped[str] = mapped_column(String(16), default="generated")  # generated|feedback|manual
+    origin: Mapped[str] = mapped_column(
+        String(16), default="generated"
+    )  # generated|feedback|manual
 
 
 class EvalRun(Base):

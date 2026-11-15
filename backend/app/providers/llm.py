@@ -148,7 +148,9 @@ def extract_json(text: str) -> Any:
 class LLMClient:
     """High-level async LLM client."""
 
-    def __init__(self, settings: Settings | None = None, limiter: RateLimiter | None = None) -> None:
+    def __init__(
+        self, settings: Settings | None = None, limiter: RateLimiter | None = None
+    ) -> None:
         self.settings = settings or get_settings()
         self.limiter = limiter or RateLimiter(self.settings.llm_rpm_limit)
         self.breaker = CircuitBreaker()

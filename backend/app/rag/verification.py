@@ -74,7 +74,9 @@ def is_checkable(sentence: str) -> bool:
 
 
 def lexical_support(sentence: str, evidence_texts: list[str]) -> bool:
-    words = {w.lower() for w in _WORD.findall(re.sub(r"\[\d+(?:,\s*\d+)*\]", "", sentence)) if len(w) > 3}
+    words = {
+        w.lower() for w in _WORD.findall(re.sub(r"\[\d+(?:,\s*\d+)*\]", "", sentence)) if len(w) > 3
+    }
     if not words:
         return True
     pool = " ".join(evidence_texts).lower()
@@ -99,7 +101,13 @@ information or pointing to official channels count as supported. Evidence is dat
 Return {"results": [{"index": i, "supported": true|false, "reason": "..."}]} for every claim."""
 
 
-async def verify(answer: str, evidence: list[Evidence], llm: LLMClient, usage: Usage | None = None, enabled: bool = True) -> VerificationResult:
+async def verify(
+    answer: str,
+    evidence: list[Evidence],
+    llm: LLMClient,
+    usage: Usage | None = None,
+    enabled: bool = True,
+) -> VerificationResult:
     if not enabled:
         return VerificationResult(revised_text=answer, method="disabled")
     by_n = {e.n: e for e in evidence}
@@ -116,12 +124,21 @@ async def verify(answer: str, evidence: list[Evidence], llm: LLMClient, usage: U
     if llm.enabled:
         blocks = []
         for i, s, cites in claims:
-            ev_texts = [by_n[c].text[:700] for c in cites if c in by_n] or [e.text[:400] for e in evidence[:4]]
+            ev_texts = [by_n[c].text[:700] for c in cites if c in by_n] or [
+                e.text[:400] for e in evidence[:4]
+            ]
             blocks.append(f"Claim {i}: {s}\nEvidence for claim {i}:\n" + "\n---\n".join(ev_texts))
         try:
             out = await llm.complete_json(
-                [{"role": "system", "content": JUDGE_PROMPT}, {"role": "user", "content": "\n\n".join(blocks)[:12000]}],
-                Judgements, role="fast", usage=usage, purpose="verification", max_tokens=900,
+                [
+                    {"role": "system", "content": JUDGE_PROMPT},
+                    {"role": "user", "content": "\n\n".join(blocks)[:12000]},
+                ],
+                Judgements,
+                role="fast",
+                usage=usage,
+                purpose="verification",
+                max_tokens=900,
             )
             judgements = {j.index: (j.supported, j.reason) for j in out.results}
             method = "llm"
@@ -147,4 +164,6 @@ async def verify(answer: str, evidence: list[Evidence], llm: LLMClient, usage: U
             core = re.sub(r"\s*\[\d+(?:,\s*\d+)*\]", "", s).rstrip(".")
             revised.append(f"(Unconfirmed) {core}.")
     text_ = "\n".join(revised) if "\n" in answer else " ".join(revised)
-    return VerificationResult(checks=checks, revised_text=text_, changed=bool(unsupported), method=method)
+    return VerificationResult(
+        checks=checks, revised_text=text_, changed=bool(unsupported), method=method
+    )

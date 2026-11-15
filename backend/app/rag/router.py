@@ -33,44 +33,98 @@ MAX_TOOL_CALLS = 4
 TOOL_TIMEOUT_S = 10.0
 
 TOOL_SPECS: list[dict[str, Any]] = [
-    {"type": "function", "function": {
-        "name": "search_advisories",
-        "description": "Hybrid search over official advisories, news and live-incident texts.",
-        "parameters": {"type": "object", "properties": {
-            "query": {"type": "string"},
-            "event_types": {"type": "array", "items": {"type": "string"}}}, "required": ["query"]}}},
-    {"type": "function", "function": {
-        "name": "get_live_traffic",
-        "description": "Current speed vs free-flow on monitored road segments near the locations, with 60-min trend.",
-        "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {
-        "name": "get_active_incidents",
-        "description": "Active TomTom incidents (accidents, closures, jams) near the locations.",
-        "parameters": {"type": "object", "properties": {"radius_m": {"type": "number"}}}}},
-    {"type": "function", "function": {
-        "name": "get_weather",
-        "description": "Weather now and in the time window for the nearest Delhi zone (rain, fog, heat flags).",
-        "parameters": {"type": "object", "properties": {}}}},
-    {"type": "function", "function": {
-        "name": "query_incident_history",
-        "description": "Counts of past closures/incidents/advisories by type for the locations and time window.",
-        "parameters": {"type": "object", "properties": {"event_type": {"type": "string"}}}}},
-    {"type": "function", "function": {
-        "name": "check_route",
-        "description": "Advisories, incidents, congestion and weather along the corridor from origin to destination.",
-        "parameters": {"type": "object", "properties": {
-            "origin": {"type": "string"}, "destination": {"type": "string"},
-            "depart_time": {"type": "string", "description": "e.g. '6 pm Friday'"}},
-            "required": ["origin", "destination"]}}},
-    {"type": "function", "function": {
-        "name": "typical_conditions",
-        "description": "Historical average congestion for a weekday and hour (is 6 pm Friday bad?).",
-        "parameters": {"type": "object", "properties": {"weekday": {"type": "integer", "description": "0=Mon"}, "hour": {"type": "integer"}}}}},
+    {
+        "type": "function",
+        "function": {
+            "name": "search_advisories",
+            "description": "Hybrid search over official advisories, news and live-incident texts.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "event_types": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_live_traffic",
+            "description": "Current speed vs free-flow on monitored road segments near the locations, with 60-min trend.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_active_incidents",
+            "description": "Active TomTom incidents (accidents, closures, jams) near the locations.",
+            "parameters": {"type": "object", "properties": {"radius_m": {"type": "number"}}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Weather now and in the time window for the nearest Delhi zone (rain, fog, heat flags).",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_incident_history",
+            "description": "Counts of past closures/incidents/advisories by type for the locations and time window.",
+            "parameters": {"type": "object", "properties": {"event_type": {"type": "string"}}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_route",
+            "description": "Advisories, incidents, congestion and weather along the corridor from origin to destination.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "origin": {"type": "string"},
+                    "destination": {"type": "string"},
+                    "depart_time": {"type": "string", "description": "e.g. '6 pm Friday'"},
+                },
+                "required": ["origin", "destination"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "typical_conditions",
+            "description": "Historical average congestion for a weekday and hour (is 6 pm Friday bad?).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "weekday": {"type": "integer", "description": "0=Mon"},
+                    "hour": {"type": "integer"},
+                },
+            },
+        },
+    },
 ]
 
 DEFAULT_TOOLS: dict[str, list[str]] = {
-    "live_conditions": ["get_live_traffic", "get_active_incidents", "search_advisories", "get_weather"],
-    "cause_explanation": ["get_live_traffic", "get_active_incidents", "search_advisories", "get_weather"],
+    "live_conditions": [
+        "get_live_traffic",
+        "get_active_incidents",
+        "search_advisories",
+        "get_weather",
+    ],
+    "cause_explanation": [
+        "get_live_traffic",
+        "get_active_incidents",
+        "search_advisories",
+        "get_weather",
+    ],
     "advisory_lookup": ["search_advisories"],
     "plan_trip": ["check_route", "typical_conditions", "search_advisories"],
     "historical_lookup": ["search_advisories", "query_incident_history"],
@@ -90,8 +144,14 @@ class ToolCall:
     result: Any = None
 
     def trace(self) -> dict[str, Any]:
-        return {"name": self.name, "args": self.args, "origin": self.origin,
-                "latency_ms": round(self.latency_ms, 1), "ok": self.ok, "summary": self.summary}
+        return {
+            "name": self.name,
+            "args": self.args,
+            "origin": self.origin,
+            "latency_ms": round(self.latency_ms, 1),
+            "ok": self.ok,
+            "summary": self.summary,
+        }
 
 
 @dataclass
@@ -101,19 +161,27 @@ class RouterOutput:
     llm_selected: list[str] = field(default_factory=list)
 
 
-async def select_tools(qu: QueryUnderstanding, llm: LLMClient, usage: Usage | None) -> list[tuple[str, dict[str, Any]]]:
+async def select_tools(
+    qu: QueryUnderstanding, llm: LLMClient, usage: Usage | None
+) -> list[tuple[str, dict[str, Any]]]:
     """Ask the LLM which tools to call; returns [(name, args)]."""
     if not llm.enabled:
         return []
     messages = [
-        {"role": "system", "content": (
-            "You route a Delhi traffic question to data tools. Call the tools needed to answer "
-            f"(at most {MAX_TOOL_CALLS}). Locations and time are already resolved: "
-            f"locations={[m.name for m in qu.locations]}, window={qu.time_window.label}, intent={qu.intent}.")},
+        {
+            "role": "system",
+            "content": (
+                "You route a Delhi traffic question to data tools. Call the tools needed to answer "
+                f"(at most {MAX_TOOL_CALLS}). Locations and time are already resolved: "
+                f"locations={[m.name for m in qu.locations]}, window={qu.time_window.label}, intent={qu.intent}."
+            ),
+        },
         {"role": "user", "content": qu.standalone},
     ]
     try:
-        msg = await llm.complete(messages, "fast", tools=TOOL_SPECS, usage=usage, purpose="routing", max_tokens=400)
+        msg = await llm.complete(
+            messages, "fast", tools=TOOL_SPECS, usage=usage, purpose="routing", max_tokens=400
+        )
     except (LLMUnavailableError, TimeoutError) as exc:
         log.info("tool selection failed; using rules", extra={"err": str(exc)[:200]})
         return []
@@ -127,7 +195,9 @@ async def select_tools(qu: QueryUnderstanding, llm: LLMClient, usage: Usage | No
     return out
 
 
-def plan_calls(qu: QueryUnderstanding, llm_calls: list[tuple[str, dict[str, Any]]]) -> list[ToolCall]:
+def plan_calls(
+    qu: QueryUnderstanding, llm_calls: list[tuple[str, dict[str, Any]]]
+) -> list[ToolCall]:
     valid = {t["function"]["name"] for t in TOOL_SPECS}
     calls: list[ToolCall] = [ToolCall(n, a, "llm") for n, a in llm_calls if n in valid]
     names = {c.name for c in calls}
@@ -137,7 +207,14 @@ def plan_calls(qu: QueryUnderstanding, llm_calls: list[tuple[str, dict[str, Any]
             names.add(name)
     # rule tools are mandatory; drop surplus LLM extras beyond the cap first
     while len(calls) > MAX_TOOL_CALLS:
-        extra = next((c for c in reversed(calls) if c.origin == "llm" and c.name not in DEFAULT_TOOLS.get(qu.intent, [])), None)
+        extra = next(
+            (
+                c
+                for c in reversed(calls)
+                if c.origin == "llm" and c.name not in DEFAULT_TOOLS.get(qu.intent, [])
+            ),
+            None,
+        )
         calls.remove(extra or calls[-1])
     return calls
 
@@ -150,11 +227,16 @@ def _summarise(name: str, result: Any) -> str:
     if not result.get("available", True):
         return f"unavailable: {result.get('reason', '')}"[:160]
     if name == "get_live_traffic":
-        return ", ".join(f"{s['name']}: {s['level']} ({s['current_speed_kmph']}/{s['free_flow_speed_kmph']} km/h)" for s in result["segments"][:3])
+        return ", ".join(
+            f"{s['name']}: {s['level']} ({s['current_speed_kmph']}/{s['free_flow_speed_kmph']} km/h)"
+            for s in result["segments"][:3]
+        )
     if name == "get_active_incidents":
         return f"{result['count']} active incidents"
     if name == "get_weather":
-        return f"{result['zone']}: {result['current']['conditions']}, flags={result['window_flags']}"
+        return (
+            f"{result['zone']}: {result['current']['conditions']}, flags={result['window_flags']}"
+        )
     if name == "check_route":
         return f"{len(result['advisories'])} advisories, {len(result['incidents'])} incidents, {len(result['segments'])} segments on corridor"
     if name == "typical_conditions":
@@ -164,7 +246,9 @@ def _summarise(name: str, result: Any) -> str:
     return json.dumps(result, default=str)[:160]
 
 
-async def _trip_endpoints(qu: QueryUnderstanding, args: dict[str, Any]) -> tuple[GeoMatch | None, GeoMatch | None]:
+async def _trip_endpoints(
+    qu: QueryUnderstanding, args: dict[str, Any]
+) -> tuple[GeoMatch | None, GeoMatch | None]:
     geocoder = get_geocoder()
     origin = await geocoder.geocode(args["origin"]) if args.get("origin") else None
     dest = await geocoder.geocode(args["destination"]) if args.get("destination") else None
@@ -188,12 +272,21 @@ async def execute(
         started = time.perf_counter()
         try:
             async with session_scope() as s:
-                call.result = await asyncio.wait_for(_dispatch(s, qu, call, now, toggles), TOOL_TIMEOUT_S * (2 if call.name == "search_advisories" else 1))
+                call.result = await asyncio.wait_for(
+                    _dispatch(s, qu, call, now, toggles),
+                    TOOL_TIMEOUT_S * (2 if call.name == "search_advisories" else 1),
+                )
         except TimeoutError:
             call.ok, call.result = False, {"available": False, "reason": "timeout"}
         except Exception as exc:
-            log.warning("tool failed", extra={"tool": call.name, "err": f"{type(exc).__name__}: {exc}"[:300]})
-            call.ok, call.result = False, {"available": False, "reason": f"error: {type(exc).__name__}"}
+            log.warning(
+                "tool failed",
+                extra={"tool": call.name, "err": f"{type(exc).__name__}: {exc}"[:300]},
+            )
+            call.ok, call.result = (
+                False,
+                {"available": False, "reason": f"error: {type(exc).__name__}"},
+            )
         call.latency_ms = (time.perf_counter() - started) * 1000
         call.summary = _summarise(call.name, call.result)
 
@@ -204,15 +297,22 @@ async def execute(
     return out
 
 
-async def _dispatch(s: AsyncSession, qu: QueryUnderstanding, call: ToolCall, now: datetime, toggles: Toggles) -> Any:
+async def _dispatch(
+    s: AsyncSession, qu: QueryUnderstanding, call: ToolCall, now: datetime, toggles: Toggles
+) -> Any:
     w = qu.time_window
     if call.name == "search_advisories":
         queries = list(qu.rewritten_queries)
         if call.args.get("query") and call.args["query"] not in queries:
             queries.append(call.args["query"])
         return await hybrid_search(
-            s, queries=queries[:4] or [qu.standalone], locations=qu.locations, window=w,
-            intent=qu.intent, now=now, toggles=toggles,
+            s,
+            queries=queries[:4] or [qu.standalone],
+            locations=qu.locations,
+            window=w,
+            intent=qu.intent,
+            now=now,
+            toggles=toggles,
         )
     if call.name == "get_live_traffic":
         return await live.get_live_traffic(s, qu.locations, now)
@@ -221,14 +321,18 @@ async def _dispatch(s: AsyncSession, qu: QueryUnderstanding, call: ToolCall, now
     if call.name == "get_weather":
         return await live.get_weather(s, qu.locations, w.start, w.end, now)
     if call.name == "query_incident_history":
-        return await history.query_incident_history(s, qu.locations, w.start, w.end, call.args.get("event_type"))
+        return await history.query_incident_history(
+            s, qu.locations, w.start, w.end, call.args.get("event_type")
+        )
     if call.name == "check_route":
         origin, dest = await _trip_endpoints(qu, call.args)
         if origin is None or dest is None:
             return {"available": False, "reason": "could not resolve origin/destination"}
         depart = w.start + (w.end - w.start) / 2 if not w.is_live else now
         if call.args.get("depart_time"):
-            depart = resolve_time_window(str(call.args["depart_time"]), now).start + timedelta(hours=1)
+            depart = resolve_time_window(str(call.args["depart_time"]), now).start + timedelta(
+                hours=1
+            )
         return await route_check.check_route(s, origin, dest, depart, now)
     if call.name == "typical_conditions":
         ref = w.start + timedelta(hours=1) if not w.is_live else now

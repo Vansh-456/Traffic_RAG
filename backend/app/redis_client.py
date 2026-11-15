@@ -15,7 +15,7 @@ CHANNEL_NEW_INCIDENT = "events:new_incident"
 
 
 @lru_cache
-def get_redis() -> Redis:
+def get_redis() -> Redis[bytes]:
     return Redis.from_url(get_settings().redis_url, decode_responses=False)
 
 
@@ -24,7 +24,9 @@ class LockNotAcquiredError(RuntimeError):
 
 
 @asynccontextmanager
-async def job_lock(name: str, ttl_seconds: int = 1800, redis: Redis | None = None) -> AsyncIterator[None]:
+async def job_lock(
+    name: str, ttl_seconds: int = 1800, redis: Redis[bytes] | None = None
+) -> AsyncIterator[None]:
     """Non-blocking distributed lock so scheduled jobs never overlap."""
     r = redis or get_redis()
     lock = r.lock(f"lock:job:{name}", timeout=ttl_seconds, blocking=False)

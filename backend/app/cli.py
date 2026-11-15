@@ -44,7 +44,14 @@ def _run(coro: Coroutine[Any, Any, Any]) -> Any:
 
 
 def _print(stats: Any) -> None:
-    typer.echo(json.dumps(stats if isinstance(stats, dict) else stats.__dict__, default=str, indent=2, ensure_ascii=False))
+    typer.echo(
+        json.dumps(
+            stats if isinstance(stats, dict) else stats.__dict__,
+            default=str,
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 @ingest.command("backfill-dtp")
@@ -56,7 +63,16 @@ def backfill_dtp(
     """Crawl all historical DTP advisory nodes (+ attached PDFs)."""
     from app.ingestion.jobs import job_dtp_backfill, run_job
 
-    _print(_run(run_job("dtp_advisories", "backfill", lambda st: job_dtp_backfill(st, start=start, limit=limit, max_id=max_id), lock_ttl=6 * 3600)))
+    _print(
+        _run(
+            run_job(
+                "dtp_advisories",
+                "backfill",
+                lambda st: job_dtp_backfill(st, start=start, limit=limit, max_id=max_id),
+                lock_ttl=6 * 3600,
+            )
+        )
+    )
 
 
 @ingest.command("backfill-news")
@@ -64,7 +80,13 @@ def backfill_news(days: int = typer.Option(180)) -> None:
     """GDELT backfill of Delhi traffic news."""
     from app.ingestion.jobs import job_gdelt_backfill, run_job
 
-    _print(_run(run_job("gdelt", "backfill", lambda st: job_gdelt_backfill(st, days=days), lock_ttl=6 * 3600)))
+    _print(
+        _run(
+            run_job(
+                "gdelt", "backfill", lambda st: job_gdelt_backfill(st, days=days), lock_ttl=6 * 3600
+            )
+        )
+    )
 
 
 @ingest.command("gazetteer")
@@ -79,7 +101,11 @@ def gazetteer(osm: bool = typer.Option(True, help="also import from OSM Overpass
 
 
 @ingest.command("run-once")
-def run_once(source: str = typer.Argument(..., help="dtp|news|rss|tomtom|weather|gazetteer|expire|retention")) -> None:
+def run_once(
+    source: str = typer.Argument(
+        ..., help="dtp|news|rss|tomtom|weather|gazetteer|expire|retention"
+    ),
+) -> None:
     from app.ingestion.jobs import JOBS, run_job
 
     if source not in JOBS:
@@ -89,18 +115,33 @@ def run_once(source: str = typer.Argument(..., help="dtp|news|rss|tomtom|weather
 
 
 @db_app.command("seed")
-def seed(backfill_limit: int = typer.Option(400, help="DTP nodes to scan on first seed (0 = skip)")) -> None:
+def seed(
+    backfill_limit: int = typer.Option(400, help="DTP nodes to scan on first seed (0 = skip)"),
+) -> None:
     """Make a fresh deployment usable: sources, gazetteer seed, segments, events, weather, recent advisories + news."""
     from app.ingestion import jobs
 
     async def go() -> dict[str, Any]:
         out: dict[str, Any] = {}
-        out["gazetteer"] = (await jobs.run_job("gazetteer", "seed", lambda st: jobs.job_gazetteer(st, with_osm=False))).__dict__
+        out["gazetteer"] = (
+            await jobs.run_job(
+                "gazetteer", "seed", lambda st: jobs.job_gazetteer(st, with_osm=False)
+            )
+        ).__dict__
         out["segments_events"] = await jobs.seed_segments_and_events()
         out["weather"] = (await jobs.run_job("weather", "seed", jobs.job_weather)).__dict__
-        out["dtp"] = (await jobs.run_job("dtp_advisories", "seed", jobs.job_dtp_incremental)).__dict__
+        out["dtp"] = (
+            await jobs.run_job("dtp_advisories", "seed", jobs.job_dtp_incremental)
+        ).__dict__
         if backfill_limit:
-            out["dtp_backfill"] = (await jobs.run_job("dtp_advisories", "seed-backfill", lambda st: jobs.job_dtp_backfill(st, limit=backfill_limit), lock_ttl=4 * 3600)).__dict__
+            out["dtp_backfill"] = (
+                await jobs.run_job(
+                    "dtp_advisories",
+                    "seed-backfill",
+                    lambda st: jobs.job_dtp_backfill(st, limit=backfill_limit),
+                    lock_ttl=4 * 3600,
+                )
+            ).__dict__
         out["news"] = (await jobs.run_job("google_news", "seed", jobs.job_google_news)).__dict__
         out["tomtom"] = (await jobs.run_job("tomtom", "seed", jobs.job_tomtom_tick)).__dict__
         return out
@@ -109,7 +150,12 @@ def seed(backfill_limit: int = typer.Option(400, help="DTP nodes to scan on firs
 
 
 @alerts_app.command("simulate")
-def simulate(lat: float = typer.Option(...), lon: float = typer.Option(...), title: str = typer.Option("Simulated road closure"), hours: int = 3) -> None:
+def simulate(
+    lat: float = typer.Option(...),
+    lon: float = typer.Option(...),
+    title: str = typer.Option("Simulated road closure"),
+    hours: int = 3,
+) -> None:
     """Inject a simulated advisory at a point and fire matching route alerts."""
     from datetime import timedelta
 
@@ -122,14 +168,27 @@ def simulate(lat: float = typer.Option(...), lon: float = typer.Option(...), tit
 
     async def go() -> dict[str, Any]:
         now = utcnow()
-        draft = DocumentDraft(source_id="system", url=f"simulated:{now.timestamp()}", title=title, trust_level="official",
-                              content_type="text", body_text=f"{title}. Expect diversions near the marked location.",
-                              published_at=now, authority="Simulation", valid_from_hint=now,
-                              valid_to_hint=now + timedelta(hours=hours), metadata={"simulated": True})
+        draft = DocumentDraft(
+            source_id="system",
+            url=f"simulated:{now.timestamp()}",
+            title=title,
+            trust_level="official",
+            content_type="text",
+            body_text=f"{title}. Expect diversions near the marked location.",
+            published_at=now,
+            authority="Simulation",
+            valid_from_hint=now,
+            valid_to_hint=now + timedelta(hours=hours),
+            metadata={"simulated": True},
+        )
         async with session_scope() as s:
             res = await process(s, draft)
-            await s.execute(text("UPDATE chunks SET geom = ST_SetSRID(ST_MakePoint(:lon,:lat),4326) WHERE id = ANY(:ids)"),
-                            {"lon": lon, "lat": lat, "ids": res.chunk_ids})
+            await s.execute(
+                text(
+                    "UPDATE chunks SET geom = ST_SetSRID(ST_MakePoint(:lon,:lat),4326) WHERE id = ANY(:ids)"
+                ),
+                {"lon": lon, "lat": lat, "ids": res.chunk_ids},
+            )
         return {"chunks": res.chunk_ids, **(await dispatch(await match_chunks(res.chunk_ids)))}
 
     _print(_run(go()))
@@ -138,7 +197,10 @@ def simulate(lat: float = typer.Option(...), lon: float = typer.Option(...), tit
 @eval_app.command("run")
 def eval_run(
     subset: str = typer.Option("full", help="full|smoke|retrieval"),
-    ablation: list[str] = typer.Option([], help="no-rerank no-hybrid no-geo-filter no-freshness no-query-rewrite no-question-index no-verification, or 'all'"),
+    ablation: list[str] = typer.Option(
+        [],
+        help="no-rerank no-hybrid no-geo-filter no-freshness no-query-rewrite no-question-index no-verification, or 'all'",
+    ),
     label: str | None = None,
     gate: bool = typer.Option(False, help="fail (exit 1) if metrics regress vs baseline"),
     update_baseline: bool = False,
@@ -148,7 +210,11 @@ def eval_run(
     if ablation:
         report = _run(run_ablations(ablation, subset=subset))
     else:
-        report = _run(run_eval(subset=subset, label=label or subset, gate=gate, update_baseline=update_baseline))
+        report = _run(
+            run_eval(
+                subset=subset, label=label or subset, gate=gate, update_baseline=update_baseline
+            )
+        )
     _print(report)
     if gate and report.get("gate", {}).get("passed") is False:
         raise typer.Exit(code=1)

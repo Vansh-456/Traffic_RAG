@@ -31,7 +31,9 @@ def congestion_level(ratio: float | None) -> str:
     return "severe"
 
 
-async def _segments_near(session: AsyncSession, locations: list[GeoMatch], road_names: list[str]) -> list[str]:
+async def _segments_near(
+    session: AsyncSession, locations: list[GeoMatch], road_names: list[str]
+) -> list[str]:
     geom, radius = query_geometry(locations)
     ids: list[str] = []
     if geom is not None:
@@ -53,7 +55,10 @@ async def _segments_near(session: AsyncSession, locations: list[GeoMatch], road_
 
 
 async def get_live_traffic(
-    session: AsyncSession, locations: list[GeoMatch], now: datetime, segment_ids: list[str] | None = None
+    session: AsyncSession,
+    locations: list[GeoMatch],
+    now: datetime,
+    segment_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     roads = [m.name for m in locations if m.type == "road"]
     ids = segment_ids or await _segments_near(session, locations, roads)
@@ -81,11 +86,20 @@ async def get_live_traffic(
                 LEFT JOIN trend t ON t.segment_id = s.id
                 """
             ),
-            {"ids": ids, "since": now - timedelta(hours=3), "since60": now - timedelta(minutes=60), "now": now},
+            {
+                "ids": ids,
+                "since": now - timedelta(hours=3),
+                "since60": now - timedelta(minutes=60),
+                "now": now,
+            },
         )
     ).all()
     if not rows:
-        return {"available": False, "reason": "no recent TomTom observations (key missing or polling paused)", "segments_checked": ids}
+        return {
+            "available": False,
+            "reason": "no recent TomTom observations (key missing or polling paused)",
+            "segments_checked": ids,
+        }
     segs = []
     for r in rows:
         ratio = r.current_speed / r.free_flow_speed if r.free_flow_speed else None
@@ -95,12 +109,18 @@ async def get_live_traffic(
             trend = "improving" if diff > 0.07 else "worsening" if diff < -0.07 else "steady"
         segs.append(
             {
-                "segment_id": r.id, "name": r.name, "road": r.road, "lat": r.lat, "lon": r.lon,
-                "geometry": r.geojson, "current_speed_kmph": round(r.current_speed),
+                "segment_id": r.id,
+                "name": r.name,
+                "road": r.road,
+                "lat": r.lat,
+                "lon": r.lon,
+                "geometry": r.geojson,
+                "current_speed_kmph": round(r.current_speed),
                 "free_flow_speed_kmph": round(r.free_flow_speed),
                 "congestion_ratio": round(ratio, 2) if ratio is not None else None,
                 "level": "closed" if r.road_closure else congestion_level(ratio),
-                "trend_60min": trend, "as_of": fmt_ist(r.observed_at),
+                "trend_60min": trend,
+                "as_of": fmt_ist(r.observed_at),
             }
         )
     segs.sort(key=lambda s: s["congestion_ratio"] if s["congestion_ratio"] is not None else 9)
@@ -132,11 +152,16 @@ async def get_active_incidents(
         "count": len(rows),
         "incidents": [
             {
-                "id": r.id, "category": r.category, "description": r.description,
-                "from": r.from_name, "to": r.to_name, "roads": r.road_numbers,
+                "id": r.id,
+                "category": r.category,
+                "description": r.description,
+                "from": r.from_name,
+                "to": r.to_name,
+                "roads": r.road_numbers,
                 "delay_min": round(r.delay_seconds / 60) if r.delay_seconds else None,
                 "since": fmt_ist(r.start_time) if r.start_time else None,
-                "as_of": fmt_ist(r.last_seen_at), "geometry": r.geojson,
+                "as_of": fmt_ist(r.last_seen_at),
+                "geometry": r.geojson,
             }
             for r in rows
         ],
@@ -173,8 +198,10 @@ async def get_weather(
         "zone": zone,
         "as_of": fmt_ist(current.observed_at),
         "current": {
-            "temperature_c": current.temperature, "rain_mm": current.rain,
-            "visibility_m": current.visibility, "conditions": describe(current.weather_code),
+            "temperature_c": current.temperature,
+            "rain_mm": current.rain,
+            "visibility_m": current.visibility,
+            "conditions": describe(current.weather_code),
         },
         "window_flags": window_flags,
         "max_rain_mm_per_h": max_rain,
@@ -182,7 +209,11 @@ async def get_weather(
 
 
 async def typical_conditions(
-    session: AsyncSession, locations: list[GeoMatch], weekday: int, hour: int, segment_ids: list[str] | None = None
+    session: AsyncSession,
+    locations: list[GeoMatch],
+    weekday: int,
+    hour: int,
+    segment_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Historical mean congestion for weekday (0=Mon) × hour from flow observations."""
     roads = [m.name for m in locations if m.type == "road"]
@@ -204,14 +235,24 @@ async def typical_conditions(
         )
     ).all()
     if not rows:
-        return {"available": False, "reason": "not enough historical observations for that weekday/hour yet", "weekday": weekday, "hour": hour}
+        return {
+            "available": False,
+            "reason": "not enough historical observations for that weekday/hour yet",
+            "weekday": weekday,
+            "hour": hour,
+        }
     return {
         "available": True,
         "weekday": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][weekday],
         "hour": hour,
         "segments": [
-            {"segment_id": r.id, "name": r.name, "typical_ratio": round(float(r.ratio), 2),
-             "level": congestion_level(float(r.ratio)), "samples": int(r.n)}
+            {
+                "segment_id": r.id,
+                "name": r.name,
+                "typical_ratio": round(float(r.ratio), 2),
+                "level": congestion_level(float(r.ratio)),
+                "samples": int(r.n),
+            }
             for r in rows
         ],
     }

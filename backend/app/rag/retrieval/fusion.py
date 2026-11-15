@@ -7,7 +7,9 @@ from collections import defaultdict
 RRF_K = 60
 
 
-def rrf(lists: dict[str, list[int]], k: int = RRF_K) -> tuple[dict[int, float], dict[int, dict[str, int]]]:
+def rrf(
+    lists: dict[str, list[int]], k: int = RRF_K
+) -> tuple[dict[int, float], dict[int, dict[str, int]]]:
     """Fuse ranked id lists.
 
     Returns (scores, ranks) where ``ranks[id][list_name]`` is the 1-based rank

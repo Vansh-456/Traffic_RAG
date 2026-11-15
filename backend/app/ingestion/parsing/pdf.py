@@ -114,4 +114,6 @@ async def parse_pdf(data: bytes) -> ParsedPdf:
     if vision and not looks_garbled(vision):
         return ParsedPdf(text=vision, method="vision", pages=pages, quality_ok=True)
     best = max([text, ocr_text, vision or ""], key=len)
-    return ParsedPdf(text=best, method="ocr" if best == ocr_text else "text", pages=pages, quality_ok=False)
+    return ParsedPdf(
+        text=best, method="ocr" if best == ocr_text else "text", pages=pages, quality_ok=False
+    )

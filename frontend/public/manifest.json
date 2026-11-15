@@ -1,0 +1,10 @@
+{
+  "name": "Delhi Traffic Copilot",
+  "short_name": "Traffic Copilot",
+  "description": "Cited answers on Delhi traffic diversions, closures and live congestion",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f9fc",
+  "theme_color": "#1d4ed8",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

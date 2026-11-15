@@ -61,9 +61,7 @@ class TrafficIncident(Base):
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    document_id: Mapped[int | None] = mapped_column(
-        ForeignKey("documents.id", ondelete="SET NULL")
-    )
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"))
     raw: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
 
 

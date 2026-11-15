@@ -32,7 +32,15 @@ from app.rag.retrieval.hybrid import Toggles
 
 log = get_logger(__name__)
 
-ABLATIONS = ["no-rerank", "no-hybrid", "no-geo-filter", "no-freshness", "no-query-rewrite", "no-question-index", "no-verification"]
+ABLATIONS = [
+    "no-rerank",
+    "no-hybrid",
+    "no-geo-filter",
+    "no-freshness",
+    "no-query-rewrite",
+    "no-question-index",
+    "no-verification",
+]
 _LIVE_DB_URL: str | None = None
 
 
@@ -63,7 +71,13 @@ def use_eval_db() -> str:
             conn.execute(f'CREATE DATABASE "{name}"')
             log.info("created eval database", extra={"db": name})
     backend_dir = Path(__file__).resolve().parents[2]
-    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=backend_dir, check=True, env={**os.environ}, capture_output=True)
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=backend_dir,
+        check=True,
+        env={**os.environ},
+        capture_output=True,
+    )
     return eval_url
 
 
@@ -75,7 +89,9 @@ async def ensure_fixture() -> dict[str, Any]:
     """Load the fixture corpus once per fixture version (hash stored on the source row)."""
     digest = _fixture_hash()
     async with session_scope() as s:
-        row = (await s.execute(text("SELECT config->>'hash' FROM sources WHERE id = 'eval_fixture'"))).scalar_one_or_none()
+        row = (
+            await s.execute(text("SELECT config->>'hash' FROM sources WHERE id = 'eval_fixture'"))
+        ).scalar_one_or_none()
         if row == digest:
             return {"fixture": "up-to-date", "hash": digest}
         await s.execute(text("DELETE FROM documents WHERE source_id = 'eval_fixture'"))
@@ -91,7 +107,12 @@ async def ensure_fixture() -> dict[str, Any]:
         await refresh_geocoder(s)
     out = await load_fixture_corpus()
     async with session_scope() as s:
-        await s.execute(text("UPDATE sources SET config = jsonb_build_object('hash', CAST(:h AS text)) WHERE id = 'eval_fixture'"), {"h": digest})
+        await s.execute(
+            text(
+                "UPDATE sources SET config = jsonb_build_object('hash', CAST(:h AS text)) WHERE id = 'eval_fixture'"
+            ),
+            {"h": digest},
+        )
     return {"fixture": "loaded", "hash": digest, **out}
 
 
@@ -115,14 +136,29 @@ def _config_for(ablation: str | None) -> RunConfig:
     return cfg
 
 
-ABSTAIN_MARKERS = ("don't have enough", "do not have enough", "not enough reliable", "पर्याप्त", "no active advisories", "couldn't find", "could not find")
+ABSTAIN_MARKERS = (
+    "don't have enough",
+    "do not have enough",
+    "not enough reliable",
+    "पर्याप्त",
+    "no active advisories",
+    "couldn't find",
+    "could not find",
+)
 
 
 async def _doc_urls(chunk_ids: list[int]) -> list[str]:
     if not chunk_ids:
         return []
     async with session_scope() as s:
-        rows = (await s.execute(text("SELECT c.id, d.url FROM chunks c JOIN documents d ON d.id = c.document_id WHERE c.id = ANY(:ids)"), {"ids": chunk_ids})).all()
+        rows = (
+            await s.execute(
+                text(
+                    "SELECT c.id, d.url FROM chunks c JOIN documents d ON d.id = c.document_id WHERE c.id = ANY(:ids)"
+                ),
+                {"ids": chunk_ids},
+            )
+        ).all()
     by_id = {r.id: r.url for r in rows}
     return list(dict.fromkeys(by_id[c] for c in chunk_ids if c in by_id))
 
@@ -132,11 +168,14 @@ async def _cluster_urls(gold: set[str]) -> set[str]:
     if not gold:
         return gold
     async with session_scope() as s:
-        rows = await s.execute(text(
-            """SELECT DISTINCT d2.url FROM documents d JOIN chunks c ON c.document_id = d.id
+        rows = await s.execute(
+            text(
+                """SELECT DISTINCT d2.url FROM documents d JOIN chunks c ON c.document_id = d.id
                JOIN chunks c2 ON c2.dedup_cluster_id = c.dedup_cluster_id JOIN documents d2 ON d2.id = c2.document_id
                WHERE d.url = ANY(:u)"""
-        ), {"u": list(gold)})
+            ),
+            {"u": list(gold)},
+        )
         return gold | {r[0] for r in rows}
 
 
@@ -154,30 +193,51 @@ async def evaluate_question(q: dict[str, Any], cfg: RunConfig) -> dict[str, Any]
     expect_abstain = bool(q.get("unanswerable") or q.get("out_of_scope"))
     verification = (result.internals or {}).get("verification") or {}
     claims = verification.get("claims") or []
-    cited_doc_urls = [c.get("doc_url") or c.get("url") or "" for c in result.citations if c.get("kind") == "chunk"]
+    cited_doc_urls = [
+        c.get("doc_url") or c.get("url") or "" for c in result.citations if c.get("kind") == "chunk"
+    ]
     gate = (result.internals or {}).get("relevance_gate") or {}
     row: dict[str, Any] = {
-        "id": q["id"], "question": q["question"], "intent_expected": q["intent"], "intent": result.intent,
-        "language": q["language"], "answer": result.answer[:1500], "retrieved": retrieved[:10],
-        "abstained": abstained, "expect_abstain": expect_abstain,
+        "id": q["id"],
+        "question": q["question"],
+        "intent_expected": q["intent"],
+        "intent": result.intent,
+        "language": q["language"],
+        "answer": result.answer[:1500],
+        "retrieved": retrieved[:10],
+        "abstained": abstained,
+        "expect_abstain": expect_abstain,
         "abstention_correct": abstained == expect_abstain,
-        "language_match": M.language_match(result.answer, q["language"]) if not q.get("out_of_scope") else True,
-        "faithfulness": result.faithfulness if result.faithfulness is not None else (1.0 if abstained else None),
-        "latency_ms": round(elapsed, 1), "first_token_ms": result.first_token_ms,
+        "language_match": M.language_match(result.answer, q["language"])
+        if not q.get("out_of_scope")
+        else True,
+        "faithfulness": result.faithfulness
+        if result.faithfulness is not None
+        else (1.0 if abstained else None),
+        "latency_ms": round(elapsed, 1),
+        "first_token_ms": result.first_token_ms,
         "cost_usd": ((result.internals or {}).get("usage") or {}).get("cost_usd", 0.0),
         "tags": q.get("tags", []),
         "best_score": gate.get("best_score"),
         "tool_data": gate.get("tool_data", False),
     }
     if gold:
-        row.update({
-            "recall@5": M.recall_at_k(retrieved, gold, 5), "recall@10": M.recall_at_k(retrieved, gold, 10),
-            "mrr": M.mrr(retrieved, gold), "ndcg@10": M.ndcg_at_k(retrieved, gold, 10),
-            "context_precision": M.context_precision(retrieved, gold),
-            "citation_accuracy": M.citation_accuracy(cited_doc_urls, gold, []),  # gold-based: comparable across ablations
-            "claim_support": (sum(c["supported"] for c in claims) / len(claims)) if claims else None,
-            "answer_relevancy": M.answer_relevancy(q["question"], result.answer),
-        })
+        row.update(
+            {
+                "recall@5": M.recall_at_k(retrieved, gold, 5),
+                "recall@10": M.recall_at_k(retrieved, gold, 10),
+                "mrr": M.mrr(retrieved, gold),
+                "ndcg@10": M.ndcg_at_k(retrieved, gold, 10),
+                "context_precision": M.context_precision(retrieved, gold),
+                "citation_accuracy": M.citation_accuracy(
+                    cited_doc_urls, gold, []
+                ),  # gold-based: comparable across ablations
+                "claim_support": (sum(c["supported"] for c in claims) / len(claims))
+                if claims
+                else None,
+                "answer_relevancy": M.answer_relevancy(q["question"], result.answer),
+            }
+        )
     if q.get("out_of_scope"):
         row["oos_correct"] = result.intent == "out_of_scope"
     return row
@@ -185,23 +245,38 @@ async def evaluate_question(q: dict[str, Any], cfg: RunConfig) -> dict[str, Any]
 
 def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
     ans = [r for r in rows if "recall@10" in r]
+
     def avg(key: str, pool: list[dict[str, Any]]) -> float:
         vals = [r[key] for r in pool if r.get(key) is not None]
         return round(M.mean(vals), 4)
+
     lat = [r["latency_ms"] for r in rows]
     ftl = [r["first_token_ms"] for r in rows if r.get("first_token_ms")]
     return {
-        "n": len(rows), "n_answerable": len(ans),
-        "recall@5": avg("recall@5", ans), "recall@10": avg("recall@10", ans), "mrr": avg("mrr", ans),
-        "ndcg@10": avg("ndcg@10", ans), "context_precision": avg("context_precision", ans),
-        "faithfulness": avg("faithfulness", rows), "citation_accuracy": avg("citation_accuracy", ans),
+        "n": len(rows),
+        "n_answerable": len(ans),
+        "recall@5": avg("recall@5", ans),
+        "recall@10": avg("recall@10", ans),
+        "mrr": avg("mrr", ans),
+        "ndcg@10": avg("ndcg@10", ans),
+        "context_precision": avg("context_precision", ans),
+        "faithfulness": avg("faithfulness", rows),
+        "citation_accuracy": avg("citation_accuracy", ans),
         "answer_relevancy": avg("answer_relevancy", ans),
-        "abstention_accuracy": round(M.mean([1.0 if r["abstention_correct"] else 0.0 for r in rows]), 4),
-        "unanswerable_abstain_rate": round(M.mean([1.0 if r["abstained"] else 0.0 for r in rows if r["expect_abstain"]]), 4),
+        "abstention_accuracy": round(
+            M.mean([1.0 if r["abstention_correct"] else 0.0 for r in rows]), 4
+        ),
+        "unanswerable_abstain_rate": round(
+            M.mean([1.0 if r["abstained"] else 0.0 for r in rows if r["expect_abstain"]]), 4
+        ),
         "language_match": round(M.mean([1.0 if r["language_match"] else 0.0 for r in rows]), 4),
-        "intent_accuracy": round(M.mean([1.0 if r["intent"] == r["intent_expected"] else 0.0 for r in rows]), 4),
-        "latency_p50_ms": M.percentile(lat, 50), "latency_p95_ms": M.percentile(lat, 95),
-        "first_token_p50_ms": M.percentile(ftl, 50), "first_token_p95_ms": M.percentile(ftl, 95),
+        "intent_accuracy": round(
+            M.mean([1.0 if r["intent"] == r["intent_expected"] else 0.0 for r in rows]), 4
+        ),
+        "latency_p50_ms": M.percentile(lat, 50),
+        "latency_p95_ms": M.percentile(lat, 95),
+        "first_token_p50_ms": M.percentile(ftl, 50),
+        "first_token_p95_ms": M.percentile(ftl, 95),
         "cost_per_query_usd": round(M.mean([r["cost_usd"] for r in rows]), 6),
         "threshold_sweep": threshold_sweep(rows),
     }
@@ -219,7 +294,11 @@ def threshold_sweep(rows: list[dict[str, Any]]) -> dict[str, Any]:
         return {}
     results = {}
     for t in (0.05, 0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3):
-        correct = sum(1 for r in gated if ((r["best_score"] < t and not r["tool_data"]) == r["expect_abstain"]))
+        correct = sum(
+            1
+            for r in gated
+            if ((r["best_score"] < t and not r["tool_data"]) == r["expect_abstain"])
+        )
         results[f"{t:.2f}"] = round(correct / len(gated), 4)
     best = max(results, key=lambda k: (results[k], -abs(float(k) - 0.15)))
     return {"accuracy_by_threshold": results, "best": float(best), "n": len(gated)}
@@ -227,12 +306,24 @@ def threshold_sweep(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _git_sha() -> str | None:
     try:
-        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, cwd=repo_root(), check=True).stdout.strip()
+        return subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=repo_root(),
+            check=True,
+        ).stdout.strip()
     except Exception:
         return None
 
 
-async def _record_live(label: str, cfg_dict: dict[str, Any], agg: dict[str, Any], rows: list[dict[str, Any]], started: datetime) -> None:
+async def _record_live(
+    label: str,
+    cfg_dict: dict[str, Any],
+    agg: dict[str, Any],
+    rows: list[dict[str, Any]],
+    started: datetime,
+) -> None:
     """Store the run in the live DB (admin dashboard reads it there)."""
     if not _LIVE_DB_URL:
         return
@@ -241,15 +332,38 @@ async def _record_live(label: str, cfg_dict: dict[str, Any], agg: dict[str, Any]
     engine = create_async_engine(_LIVE_DB_URL)
     try:
         async with engine.begin() as conn:
-            run_id = (await conn.execute(text(
-                """INSERT INTO eval_runs (started_at, finished_at, label, config, metrics, n_questions, git_sha)
+            run_id = (
+                await conn.execute(
+                    text(
+                        """INSERT INTO eval_runs (started_at, finished_at, label, config, metrics, n_questions, git_sha)
                    VALUES (:s, now(), :l, CAST(:c AS jsonb), CAST(:m AS jsonb), :n, :g) RETURNING id"""
-            ), {"s": started, "l": label, "c": json.dumps(cfg_dict), "m": json.dumps(agg), "n": len(rows), "g": _git_sha()})).scalar_one()
+                    ),
+                    {
+                        "s": started,
+                        "l": label,
+                        "c": json.dumps(cfg_dict),
+                        "m": json.dumps(agg),
+                        "n": len(rows),
+                        "g": _git_sha(),
+                    },
+                )
+            ).scalar_one()
             for r in rows:
-                await conn.execute(text(
-                    """INSERT INTO eval_results (run_id, question_id, answer, retrieved_chunk_ids, metrics, latency_ms)
+                await conn.execute(
+                    text(
+                        """INSERT INTO eval_results (run_id, question_id, answer, retrieved_chunk_ids, metrics, latency_ms)
                        VALUES (:r, :q, :a, '{}', CAST(:m AS jsonb), :l)"""
-                ), {"r": run_id, "q": r["id"], "a": r["answer"], "m": json.dumps({k: v for k, v in r.items() if k not in ("answer",)}, default=str), "l": r["latency_ms"]})
+                    ),
+                    {
+                        "r": run_id,
+                        "q": r["id"],
+                        "a": r["answer"],
+                        "m": json.dumps(
+                            {k: v for k, v in r.items() if k not in ("answer",)}, default=str
+                        ),
+                        "l": r["latency_ms"],
+                    },
+                )
     except Exception as exc:
         log.warning("could not record eval run in live DB", extra={"err": str(exc)[:200]})
     finally:
@@ -272,12 +386,20 @@ def check_gate(agg: dict[str, Any], subset: str) -> dict[str, Any]:
     for key in ("faithfulness", "recall@10"):
         if agg[key] < baseline[key] - margin:
             failures.append(f"{key} {agg[key]:.3f} < baseline {baseline[key]:.3f} - {margin}")
-    return {"passed": not failures, "failures": failures, "baseline": {k: baseline[k] for k in ("faithfulness", "recall@10")}}
+    return {
+        "passed": not failures,
+        "failures": failures,
+        "baseline": {k: baseline[k] for k in ("faithfulness", "recall@10")},
+    }
 
 
 async def run_eval(
-    subset: str = "full", label: str = "full", gate: bool = False, update_baseline: bool = False,
-    ablation: str | None = None, write_report: bool = True,
+    subset: str = "full",
+    label: str = "full",
+    gate: bool = False,
+    update_baseline: bool = False,
+    ablation: str | None = None,
+    write_report: bool = True,
 ) -> dict[str, Any]:
     if _LIVE_DB_URL is None:
         use_eval_db()
@@ -294,14 +416,29 @@ async def run_eval(
         try:
             rows.append(await evaluate_question(q, _config_for(ablation)))
         except Exception as exc:
-            log.error("eval question failed", extra={"id": q["id"], "err": f"{type(exc).__name__}: {exc}"[:300]})
+            log.error(
+                "eval question failed",
+                extra={"id": q["id"], "err": f"{type(exc).__name__}: {exc}"[:300]},
+            )
         if i % 10 == 0:
             log.info("eval progress", extra={"done": i, "total": len(questions)})
     agg = aggregate(rows)
-    cfg_dict = {"subset": subset, "ablation": ablation, "toggles": asdict(cfg.toggles), "use_rewrite": cfg.use_rewrite,
-                "use_verification": cfg.use_verification, "llm": get_settings().llm_enabled,
-                "embedding": get_settings().embedding_provider, "reranker": get_settings().reranker_provider}
-    report = {"label": label, "config": cfg_dict, "fixture": fixture, "metrics": agg}
+    cfg_dict = {
+        "subset": subset,
+        "ablation": ablation,
+        "toggles": asdict(cfg.toggles),
+        "use_rewrite": cfg.use_rewrite,
+        "use_verification": cfg.use_verification,
+        "llm": get_settings().llm_enabled,
+        "embedding": get_settings().embedding_provider,
+        "reranker": get_settings().reranker_provider,
+    }
+    report: dict[str, Any] = {
+        "label": label,
+        "config": cfg_dict,
+        "fixture": fixture,
+        "metrics": agg,
+    }
     if gate:
         report["gate"] = check_gate(agg, subset)
     if update_baseline:
@@ -309,11 +446,14 @@ async def run_eval(
         data = json.loads(path.read_text()) if path.exists() else {}
         data[subset] = agg
         path.write_text(json.dumps(data, indent=2) + "\n")
-        report["baseline_updated"] = True
+        report["baseline_updated"] = [subset]
     if write_report:
         out_dir = Path(__file__).resolve().parents[2] / "eval_reports"
         out_dir.mkdir(exist_ok=True)
-        (out_dir / f"{started:%Y%m%d-%H%M%S}-{label}.json").write_text(json.dumps({**report, "rows": rows}, indent=2, default=str, ensure_ascii=False), encoding="utf-8")
+        (out_dir / f"{started:%Y%m%d-%H%M%S}-{label}.json").write_text(
+            json.dumps({**report, "rows": rows}, indent=2, default=str, ensure_ascii=False),
+            encoding="utf-8",
+        )
         _write_markdown_section("main", label, {label: agg}, cfg_dict)
     await _record_live(label, cfg_dict, agg, rows, started)
     return report
@@ -324,24 +464,64 @@ async def run_ablations(names: list[str], subset: str = "full") -> dict[str, Any
     if names == ["all"] or "all" in names:
         names = ABLATIONS
     results: dict[str, dict[str, Any]] = {}
-    results["full system"] = (await run_eval(subset=subset, label=f"{subset}-baseline", write_report=False))["metrics"]
+    results["full system"] = (
+        await run_eval(subset=subset, label=f"{subset}-baseline", write_report=False)
+    )["metrics"]
     for name in names:
-        results[name] = (await run_eval(subset=subset, label=f"{subset}-{name}", ablation=name, write_report=False))["metrics"]
-    _write_markdown_section("ablation", subset, results, {"subset": subset, "llm": get_settings().llm_enabled,
-                            "embedding": get_settings().embedding_provider, "reranker": get_settings().reranker_provider})
+        results[name] = (
+            await run_eval(
+                subset=subset, label=f"{subset}-{name}", ablation=name, write_report=False
+            )
+        )["metrics"]
+    _write_markdown_section(
+        "ablation",
+        subset,
+        results,
+        {
+            "subset": subset,
+            "llm": get_settings().llm_enabled,
+            "embedding": get_settings().embedding_provider,
+            "reranker": get_settings().reranker_provider,
+        },
+    )
     return {"ablations": results}
 
 
-TABLE_KEYS = ["recall@5", "recall@10", "mrr", "ndcg@10", "faithfulness", "citation_accuracy", "abstention_accuracy", "language_match", "latency_p95_ms"]
+TABLE_KEYS = [
+    "recall@5",
+    "recall@10",
+    "mrr",
+    "ndcg@10",
+    "faithfulness",
+    "citation_accuracy",
+    "abstention_accuracy",
+    "language_match",
+    "latency_p95_ms",
+]
 
 
-def _write_markdown_section(kind: str, label: str, results: dict[str, dict[str, Any]], cfg: dict[str, Any]) -> None:
+def _write_markdown_section(
+    kind: str, label: str, results: dict[str, dict[str, Any]], cfg: dict[str, Any]
+) -> None:
     path = repo_root() / "docs" / "evaluation.md"
     content = path.read_text(encoding="utf-8") if path.exists() else "# Evaluation\n"
     start, end = f"<!-- eval:{kind}:start -->", f"<!-- eval:{kind}:end -->"
-    header = "| Configuration | " + " | ".join(TABLE_KEYS) + " |\n|---|" + "---|" * len(TABLE_KEYS) + "\n"
+    header = (
+        "| Configuration | "
+        + " | ".join(TABLE_KEYS)
+        + " |\n|---|"
+        + "---|" * len(TABLE_KEYS)
+        + "\n"
+    )
     rows = "".join(
-        f"| {name} | " + " | ".join(f"{m.get(k, 0):.3f}" if isinstance(m.get(k), float) and k != "latency_p95_ms" else str(m.get(k)) for k in TABLE_KEYS) + " |\n"
+        f"| {name} | "
+        + " | ".join(
+            f"{m.get(k, 0):.3f}"
+            if isinstance(m.get(k), float) and k != "latency_p95_ms"
+            else str(m.get(k))
+            for k in TABLE_KEYS
+        )
+        + " |\n"
         for name, m in results.items()
     )
     stamp = f"_Last run: {datetime.now():%Y-%m-%d %H:%M} · label `{label}` · config `{json.dumps(cfg)}` · git `{_git_sha()}`_\n\n"

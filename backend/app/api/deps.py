@@ -38,15 +38,25 @@ async def rate_limit(request: Request) -> None:
     except Exception:
         return  # fail open if Redis is down; LLM limiter still protects providers
     if count > limit:
-        raise HTTPException(status_code=429, detail="Too many requests, please wait a minute.", headers={"Retry-After": "60"})
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests, please wait a minute.",
+            headers={"Retry-After": "60"},
+        )
 
 
 def session_id(request: Request, response: Response) -> str:
     sid = request.cookies.get(SESSION_COOKIE) or request.headers.get("x-session-id")
     if not sid or len(sid) > 64:
         sid = secrets.token_urlsafe(24)
-    response.set_cookie(SESSION_COOKIE, sid, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax",
-                        secure=get_settings().app_env == "production")
+    response.set_cookie(
+        SESSION_COOKIE,
+        sid,
+        max_age=60 * 60 * 24 * 365,
+        httponly=True,
+        samesite="lax",
+        secure=get_settings().app_env == "production",
+    )
     return sid
 
 
@@ -64,7 +74,12 @@ def is_admin_token(token: str | None) -> bool:
     return bool(token) and hmac.compare_digest(str(token), expected)
 
 
-async def require_admin(authorization: str | None = Header(default=None), x_admin_token: str | None = Header(default=None)) -> None:
-    token = x_admin_token or (authorization.removeprefix("Bearer ").strip() if authorization else None)
+async def require_admin(
+    authorization: str | None = Header(default=None),
+    x_admin_token: str | None = Header(default=None),
+) -> None:
+    token = x_admin_token or (
+        authorization.removeprefix("Bearer ").strip() if authorization else None
+    )
     if not is_admin_token(token):
         raise HTTPException(status_code=401, detail="admin token required")

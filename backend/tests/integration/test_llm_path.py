@@ -25,12 +25,14 @@ NOW = datetime(2026, 11, 10, 9, 0, tzinfo=IST)
 
 class FakeLLM(LLMClient):
     def __init__(self, answer: str, unsupported_index: int | None = None) -> None:
-        super().__init__(Settings(_env_file=None, groq_api_key="test", gemini_api_key="", llm_rpm_limit=1000))
+        super().__init__(
+            Settings(_env_file=None, groq_api_key="test", gemini_api_key="", llm_rpm_limit=1000)
+        )
         self.answer = answer
         self.unsupported_index = unsupported_index
         self.purposes: list[str] = []
 
-    async def _acompletion(self, model: str, **kwargs: Any) -> Any:  # noqa: ARG002
+    async def _acompletion(self, model: str, **kwargs: Any) -> Any:
         messages = kwargs["messages"]
         joined = "\n".join(str(m.get("content")) for m in messages)
         if kwargs.get("tools"):
@@ -40,14 +42,35 @@ class FakeLLM(LLMClient):
         if "verify whether each claim" in joined:
             self.purposes.append("verification")
             idx = [int(x) for x in __import__("re").findall(r"Claim (\d+):", joined)]
-            return _resp(json.dumps({"results": [{"index": i, "supported": i != self.unsupported_index, "reason": "ok"} for i in idx]}))
+            return _resp(
+                json.dumps(
+                    {
+                        "results": [
+                            {"index": i, "supported": i != self.unsupported_index, "reason": "ok"}
+                            for i in idx
+                        ]
+                    }
+                )
+            )
         if "analyse questions" in joined:
             self.purposes.append("query_understanding")
-            return _resp(json.dumps({
-                "language": "en", "intent": "advisory_lookup", "standalone_question": "Any diversions near ITO today?",
-                "locations": ["ITO"], "time_expression": "today",
-                "rewritten_queries": ["ITO diversions today", "आईटीओ डायवर्जन आज", "ITO diversion procession"], "sub_questions": [],
-            }))
+            return _resp(
+                json.dumps(
+                    {
+                        "language": "en",
+                        "intent": "advisory_lookup",
+                        "standalone_question": "Any diversions near ITO today?",
+                        "locations": ["ITO"],
+                        "time_expression": "today",
+                        "rewritten_queries": [
+                            "ITO diversions today",
+                            "आईटीओ डायवर्जन आज",
+                            "ITO diversion procession",
+                        ],
+                        "sub_questions": [],
+                    }
+                )
+            )
         raise AssertionError(f"unexpected call: {joined[:200]}")
 
     async def stream(self, messages, role="answer", **kw):  # type: ignore[no-untyped-def]
@@ -58,24 +81,45 @@ class FakeLLM(LLMClient):
 
 def _resp(content: str | None, tool_calls: list[Any] | None = None) -> Any:
     msg = SimpleNamespace(content=content, tool_calls=tool_calls)
-    return SimpleNamespace(choices=[SimpleNamespace(message=msg)], usage=SimpleNamespace(prompt_tokens=50, completion_tokens=20))
+    return SimpleNamespace(
+        choices=[SimpleNamespace(message=msg)],
+        usage=SimpleNamespace(prompt_tokens=50, completion_tokens=20),
+    )
 
 
 async def _seed() -> None:
     async with session_scope() as s:
-        await process(s, DocumentDraft(
-            source_id="dtp_advisories", url="https://traffic.delhipolice.gov.in/en/node/1",
-            title="Traffic advisory: diversions near ITO for procession", trust_level="official", content_type="text",
-            body_text="A procession will pass ITO on 10.11.2026 from 10:00 AM to 6:00 PM. Bahadur Shah Zafar Marg will be closed between Delhi Gate and ITO.",
-            published_at=NOW - timedelta(hours=12), authority="Delhi Traffic Police",
-        ))
+        await process(
+            s,
+            DocumentDraft(
+                source_id="dtp_advisories",
+                url="https://traffic.delhipolice.gov.in/en/node/1",
+                title="Traffic advisory: diversions near ITO for procession",
+                trust_level="official",
+                content_type="text",
+                body_text="A procession will pass ITO on 10.11.2026 from 10:00 AM to 6:00 PM. Bahadur Shah Zafar Marg will be closed between Delhi Gate and ITO.",
+                published_at=NOW - timedelta(hours=12),
+                authority="Delhi Traffic Police",
+            ),
+        )
 
 
 async def test_llm_path_streams_cited_answer_and_strips_followups():
     await _seed()
-    llm = FakeLLM("Bahadur Shah Zafar Marg is closed between Delhi Gate and ITO from 10 am [1].\n<followups>[\"Is ITO open tomorrow?\",\"Alternate route?\",\"Live traffic at ITO?\"]</followups>")
+    llm = FakeLLM(
+        'Bahadur Shah Zafar Marg is closed between Delhi Gate and ITO from 10 am [1].\n<followups>["Is ITO open tomorrow?","Alternate route?","Live traffic at ITO?"]</followups>'
+    )
     result = RunResult()
-    events = [e async for e in run("Any diversions near ITO today?", [], RunConfig(now=NOW, use_cache=False), llm=llm, result=result)]
+    events = [
+        e
+        async for e in run(
+            "Any diversions near ITO today?",
+            [],
+            RunConfig(now=NOW, use_cache=False),
+            llm=llm,
+            result=result,
+        )
+    ]
     streamed = "".join(e["data"]["text"] for e in events if e["event"] == "token")
     assert "<followups>" not in streamed and "[1]" in streamed
     done = events[-1]
@@ -90,9 +134,21 @@ async def test_llm_path_streams_cited_answer_and_strips_followups():
 
 async def test_unsupported_claim_triggers_revision():
     await _seed()
-    llm = FakeLLM("Bahadur Shah Zafar Marg is closed between Delhi Gate and ITO from 10 am [1]. The Yellow Line metro is suspended all day [1].", unsupported_index=1)
+    llm = FakeLLM(
+        "Bahadur Shah Zafar Marg is closed between Delhi Gate and ITO from 10 am [1]. The Yellow Line metro is suspended all day [1].",
+        unsupported_index=1,
+    )
     result = RunResult()
-    events = [e async for e in run("Any diversions near ITO today?", [], RunConfig(now=NOW, use_cache=False), llm=llm, result=result)]
+    events = [
+        e
+        async for e in run(
+            "Any diversions near ITO today?",
+            [],
+            RunConfig(now=NOW, use_cache=False),
+            llm=llm,
+            result=result,
+        )
+    ]
     revisions = [e for e in events if e["event"] == "revision"]
     assert revisions and "(Unconfirmed)" in revisions[0]["data"]["text"]
     assert result.faithfulness == 0.5
@@ -105,4 +161,6 @@ def test_plan_calls_caps_and_keeps_rule_tools():
     calls = plan_calls(QU(), [("check_route", {}), ("typical_conditions", {})])  # type: ignore[arg-type]
     names = [c.name for c in calls]
     assert len(calls) == 4
-    assert {"get_live_traffic", "get_active_incidents", "search_advisories", "get_weather"} == set(names)
+    assert {"get_live_traffic", "get_active_incidents", "search_advisories", "get_weather"} == set(
+        names
+    )

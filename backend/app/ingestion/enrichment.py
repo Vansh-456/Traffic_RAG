@@ -22,8 +22,19 @@ from app.timeutil import IST
 log = get_logger(__name__)
 
 EventType = Literal[
-    "vip_movement", "protest", "festival", "procession", "sports_event", "roadwork",
-    "construction", "waterlogging", "accident", "breakdown", "closure", "general_advisory", "other",
+    "vip_movement",
+    "protest",
+    "festival",
+    "procession",
+    "sports_event",
+    "roadwork",
+    "construction",
+    "waterlogging",
+    "accident",
+    "breakdown",
+    "closure",
+    "general_advisory",
+    "other",
 ]
 Severity = Literal["low", "medium", "high"]
 
@@ -44,7 +55,9 @@ class Enrichment(BaseModel):
     summary_hi: str | None = None
     hypothetical_questions: list[str] = Field(default_factory=list, max_length=6)
 
-    @field_validator("locations", "roads", "diversion_points", "restricted_roads", "alternate_routes")
+    @field_validator(
+        "locations", "roads", "diversion_points", "restricted_roads", "alternate_routes"
+    )
     @classmethod
     def _clean_list(cls, v: list[str]) -> list[str]:
         return [s.strip() for s in v if isinstance(s, str) and s.strip()][:30]
@@ -80,11 +93,17 @@ Rules:
 
 
 KEYWORD_EVENT_TYPES: list[tuple[str, EventType]] = [
-    (r"\bvip\b|vvip|state visit|head of state|dignitar|motorcade|प्रधानमंत्री|राष्ट्रपति", "vip_movement"),
+    (
+        r"\bvip\b|vvip|state visit|head of state|dignitar|motorcade|प्रधानमंत्री|राष्ट्रपति",
+        "vip_movement",
+    ),
     (r"protest|dharna|agitation|demonstration|rally|march to|प्रदर्शन|धरना", "protest"),
     (r"procession|shobha yatra|yatra|kanwar|juloos|जुलूस|यात्रा", "procession"),
-    (r"chhath|diwali|deepawali|holi|dussehra|durga puja|eid|ganesh|navratri|festival|"
-     r"republic day|independence day|beating retreat|छठ|दिवाली|त्योहार|गणतंत्र", "festival"),
+    (
+        r"chhath|diwali|deepawali|holi|dussehra|durga puja|eid|ganesh|navratri|festival|"
+        r"republic day|independence day|beating retreat|छठ|दिवाली|त्योहार|गणतंत्र",
+        "festival",
+    ),
     (r"match|stadium|cricket|marathon|half marathon|football|ipl|tournament|मैच", "sports_event"),
     (r"waterlogg|water-logg|flood|inundat|जलभराव", "waterlogging"),
     (r"accident|collision|crash|overturn|दुर्घटना|हादसा", "accident"),

@@ -41,13 +41,15 @@ def _key(bucket: str) -> str:
 
 
 class SemanticCache:
-    def __init__(self, redis: Redis) -> None:
+    def __init__(self, redis: Redis[bytes]) -> None:
         self.redis = redis
         self.threshold = get_settings().cache_sim_threshold
 
-    async def lookup(self, bucket: str, query_vec: list[float]) -> tuple[dict[str, Any] | None, float]:
+    async def lookup(
+        self, bucket: str, query_vec: list[float]
+    ) -> tuple[dict[str, Any] | None, float]:
         try:
-            raw = await self.redis.lrange(_key(bucket), 0, MAX_ENTRIES_PER_BUCKET)  # type: ignore[misc]
+            raw = await self.redis.lrange(_key(bucket), 0, MAX_ENTRIES_PER_BUCKET)
         except Exception as exc:
             log.warning("cache lookup failed", extra={"err": str(exc)})
             CACHE_LOOKUPS.labels("error").inc()
@@ -64,14 +66,21 @@ class SemanticCache:
         CACHE_LOOKUPS.labels("miss").inc()
         return None, best[1]
 
-    async def store(self, bucket: str, intent: str, query_vec: list[float], payload: dict[str, Any]) -> None:
+    async def store(
+        self, bucket: str, intent: str, query_vec: list[float], payload: dict[str, Any]
+    ) -> None:
         ttl = TTL_SECONDS.get(intent)
         if not ttl:
             return
         key = _key(bucket)
         try:
-            await self.redis.lpush(key, json.dumps({"vec": [round(x, 5) for x in query_vec], "payload": payload}, default=str))  # type: ignore[misc]
-            await self.redis.ltrim(key, 0, MAX_ENTRIES_PER_BUCKET - 1)  # type: ignore[misc]
+            await self.redis.lpush(
+                key,
+                json.dumps(
+                    {"vec": [round(x, 5) for x in query_vec], "payload": payload}, default=str
+                ),
+            )
+            await self.redis.ltrim(key, 0, MAX_ENTRIES_PER_BUCKET - 1)
             await self.redis.expire(key, ttl)
         except Exception as exc:
             log.warning("cache store failed", extra={"err": str(exc)})

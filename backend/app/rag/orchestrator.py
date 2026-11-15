@@ -33,9 +33,9 @@ log = get_logger(__name__)
 Event = dict[str, Any]
 
 OUT_OF_SCOPE = {
-    "en": "I can only help with Delhi traffic: diversions, closures, incidents, live congestion, weather impact and trip timing. Try: \"Any diversions near ITO today?\"",
-    "hinglish": "Main sirf Delhi traffic ke baare mein madad kar sakta hoon — diversions, road closures, live jam, weather aur travel timing. Try: \"ITO ke paas aaj koi diversion hai?\"",
-    "hi": "मैं केवल दिल्ली ट्रैफिक से जुड़ी जानकारी दे सकता हूँ — डायवर्जन, सड़क बंद, लाइव जाम, मौसम और यात्रा का समय। उदाहरण: \"आज आईटीओ के पास कोई डायवर्जन है?\"",
+    "en": 'I can only help with Delhi traffic: diversions, closures, incidents, live congestion, weather impact and trip timing. Try: "Any diversions near ITO today?"',
+    "hinglish": 'Main sirf Delhi traffic ke baare mein madad kar sakta hoon — diversions, road closures, live jam, weather aur travel timing. Try: "ITO ke paas aaj koi diversion hai?"',
+    "hi": 'मैं केवल दिल्ली ट्रैफिक से जुड़ी जानकारी दे सकता हूँ — डायवर्जन, सड़क बंद, लाइव जाम, मौसम और यात्रा का समय। उदाहरण: "आज आईटीओ के पास कोई डायवर्जन है?"',
 }
 
 
@@ -66,18 +66,26 @@ class RunResult:
 
 def _has_useful_tool_data(calls: list[ToolCall]) -> bool:
     for c in calls:
-        if c.name == "search_advisories" or not isinstance(c.result, dict) or not c.result.get("available"):
+        if (
+            c.name == "search_advisories"
+            or not isinstance(c.result, dict)
+            or not c.result.get("available")
+        ):
             continue
         r = c.result
         if c.name == "get_live_traffic" and r.get("segments"):
             return True
         if c.name == "get_active_incidents" and r.get("count"):
             return True
-        if c.name == "check_route" and (r.get("advisories") or r.get("incidents") or r.get("segments")):
+        if c.name == "check_route" and (
+            r.get("advisories") or r.get("incidents") or r.get("segments")
+        ):
             return True
         if c.name == "typical_conditions" and r.get("segments"):
             return True
-        if c.name == "query_incident_history" and (r.get("advisory_and_news_counts") or r.get("tomtom_incident_counts")):
+        if c.name == "query_incident_history" and (
+            r.get("advisory_and_news_counts") or r.get("tomtom_incident_counts")
+        ):
             return True
     return False
 
@@ -120,27 +128,45 @@ async def run(
     if cfg.use_cache and not history:
         hit, sim = await cache.lookup(bucket, qvec)
     lap("cache_lookup", t0)
-    internals["cache"] = {"hit": hit is not None, "bucket": bucket, "best_similarity": round(sim, 4), "threshold": settings.cache_sim_threshold}
+    internals["cache"] = {
+        "hit": hit is not None,
+        "bucket": bucket,
+        "best_similarity": round(sim, 4),
+        "threshold": settings.cache_sim_threshold,
+    }
     if hit is not None:
         yield {"event": "status", "data": {"message": "Answer served from cache"}}
         yield {"event": "token", "data": {"text": hit["answer"]}}
         for name in ("cards", "citations", "map_features"):
             yield {"event": name, "data": hit.get(name)}
-        res.answer, res.language, res.intent, res.cached = hit["answer"], hit["language"], hit["intent"], True
+        res.answer, res.language, res.intent, res.cached = (
+            hit["answer"],
+            hit["language"],
+            hit["intent"],
+            True,
+        )
         res.citations = hit.get("citations") or []
         res.faithfulness = hit.get("faithfulness")
         internals["cached_internals"] = hit.get("internals")
-        internals["latency_ms"] = {"total": round((time.perf_counter() - t_start) * 1000, 1), **stages}
+        internals["latency_ms"] = {
+            "total": round((time.perf_counter() - t_start) * 1000, 1),
+            **stages,
+        }
         res.internals = internals
         res.latency_ms = int(internals["latency_ms"]["total"])
         yield {"event": "internals", "data": internals}
-        yield {"event": "done", "data": {"cached": True, "verified": True, "follow_ups": hit.get("follow_ups", [])}}
+        yield {
+            "event": "done",
+            "data": {"cached": True, "verified": True, "follow_ups": hit.get("follow_ups", [])},
+        }
         return
 
     # 6.2 query understanding --------------------------------------------
     yield {"event": "status", "data": {"message": "Understanding your question…"}}
     t0 = time.perf_counter()
-    qu: QueryUnderstanding = await understand(question, now, llm, history, usage, use_rewrite=cfg.use_rewrite)
+    qu: QueryUnderstanding = await understand(
+        question, now, llm, history, usage, use_rewrite=cfg.use_rewrite
+    )
     lap("query_understanding", t0)
     internals["query_understanding"] = qu.to_dict()
     res.language, res.intent = qu.language, qu.intent
@@ -150,21 +176,40 @@ async def run(
         msg = OUT_OF_SCOPE.get(qu.language, OUT_OF_SCOPE["en"])
         res.answer, res.abstained = msg, True
         yield {"event": "token", "data": {"text": msg}}
-        internals["latency_ms"] = {"total": round((time.perf_counter() - t_start) * 1000, 1), **stages}
-        internals["usage"] = {"calls": usage.calls, "total_tokens": usage.total_tokens, "cost_usd": usage.total_cost}
+        internals["latency_ms"] = {
+            "total": round((time.perf_counter() - t_start) * 1000, 1),
+            **stages,
+        }
+        internals["usage"] = {
+            "calls": usage.calls,
+            "total_tokens": usage.total_tokens,
+            "cost_usd": usage.total_cost,
+        }
         res.internals, res.latency_ms = internals, int(internals["latency_ms"]["total"])
         yield {"event": "internals", "data": internals}
-        yield {"event": "done", "data": {"verified": True, "abstained": True, "follow_ups": gen.default_followups(qu)}}
+        yield {
+            "event": "done",
+            "data": {"verified": True, "abstained": True, "follow_ups": gen.default_followups(qu)},
+        }
         return
 
     # 6.3 routing + tools -------------------------------------------------
     t0 = time.perf_counter()
     llm_calls = await select_tools(qu, llm, usage)
     calls = plan_calls(qu, llm_calls)
-    labels = {"search_advisories": "Searching advisories…", "get_live_traffic": "Checking live traffic…", "get_active_incidents": "Checking incidents…",
-              "get_weather": "Checking weather…", "check_route": "Checking your route…", "typical_conditions": "Looking at typical conditions…",
-              "query_incident_history": "Looking up history…"}
-    yield {"event": "status", "data": {"message": " ".join(labels.get(c.name, c.name) for c in calls)}}
+    labels = {
+        "search_advisories": "Searching advisories…",
+        "get_live_traffic": "Checking live traffic…",
+        "get_active_incidents": "Checking incidents…",
+        "get_weather": "Checking weather…",
+        "check_route": "Checking your route…",
+        "typical_conditions": "Looking at typical conditions…",
+        "query_incident_history": "Looking up history…",
+    }
+    yield {
+        "event": "status",
+        "data": {"message": " ".join(labels.get(c.name, c.name) for c in calls)},
+    }
     lap("routing", t0)
     t0 = time.perf_counter()
     routed = await execute(qu, calls, now, cfg.toggles)
@@ -182,7 +227,12 @@ async def run(
     useful_tools = _has_useful_tool_data(calls)
     relevant = [c for c in chunks if c.final >= settings.relevance_threshold * 0.5]
     abstain = best < settings.relevance_threshold and not useful_tools
-    internals["relevance_gate"] = {"best_score": round(best, 4), "threshold": settings.relevance_threshold, "tool_data": useful_tools, "abstain": abstain}
+    internals["relevance_gate"] = {
+        "best_score": round(best, 4),
+        "threshold": settings.relevance_threshold,
+        "tool_data": useful_tools,
+        "abstain": abstain,
+    }
     evidence = gen.build_evidence(relevant if not abstain else chunks[:2], routed)
     for e in evidence:
         if e.chunk_id is not None:
@@ -195,7 +245,11 @@ async def run(
 
     # 6.5 generation --------------------------------------------------------
     messages = gen.build_messages(qu, evidence, fmt_ist(now), history)
-    internals["context"] = {"evidence_items": len(evidence), "approx_tokens": sum(len(m["content"]) for m in messages) // 4, "abstain_path": abstain}
+    internals["context"] = {
+        "evidence_items": len(evidence),
+        "approx_tokens": sum(len(m["content"]) for m in messages) // 4,
+        "abstain_path": abstain,
+    }
     yield {"event": "status", "data": {"message": "Writing the answer…"}}
     t0 = time.perf_counter()
     answer = ""
@@ -231,13 +285,26 @@ async def run(
 
     # 6.6 verification --------------------------------------------------------
     t0 = time.perf_counter()
-    verification: VerificationResult = await verify(answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by != "abstain")
+    verification: VerificationResult = await verify(
+        answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by != "abstain"
+    )
     final_answer = answer
-    if verification.changed and verification.unsupported_ratio > REGENERATE_THRESHOLD and llm.enabled:
+    if (
+        verification.changed
+        and verification.unsupported_ratio > REGENERATE_THRESHOLD
+        and llm.enabled
+    ):
         yield {"event": "status", "data": {"message": "Re-checking the answer against sources…"}}
         try:
             strict = gen.build_messages(qu, evidence, fmt_ist(now), history, strict=True)
-            regen = await llm.complete_text(strict, "answer", usage=usage, purpose="regeneration", max_tokens=900, temperature=0.0)
+            regen = await llm.complete_text(
+                strict,
+                "answer",
+                usage=usage,
+                purpose="regeneration",
+                max_tokens=900,
+                temperature=0.0,
+            )
             stripper = gen.FollowupStripper()
             stripper.feed(regen)
             regen_text = stripper.answer_text()
@@ -266,7 +333,11 @@ async def run(
 
     total_ms = round((time.perf_counter() - t_start) * 1000, 1)
     internals["latency_ms"] = {"total": total_ms, "first_token": res.first_token_ms, **stages}
-    internals["usage"] = {"calls": usage.calls, "total_tokens": usage.total_tokens, "cost_usd": usage.total_cost}
+    internals["usage"] = {
+        "calls": usage.calls,
+        "total_tokens": usage.total_tokens,
+        "cost_usd": usage.total_cost,
+    }
     trace_url = trace.finish(output=final_answer, usage=usage)
     if cfg.is_admin and trace_url:
         internals["langfuse_trace_url"] = trace_url
@@ -274,16 +345,37 @@ async def run(
 
     res.answer = final_answer
     res.abstained = abstain
-    res.faithfulness = verification.faithfulness if verification.method not in ("disabled", "none") else None
+    res.faithfulness = (
+        verification.faithfulness if verification.method not in ("disabled", "none") else None
+    )
     res.citations = citations
     res.internals = internals
     res.latency_ms = int(total_ms)
     verified = verification.method in ("llm", "lexical") and verification.faithfulness >= 0.7
 
     if cfg.use_cache and not abstain and generated_by == "llm":
-        await cache.store(bucket, qu.intent, qvec, {
-            "answer": final_answer, "language": qu.language, "intent": qu.intent, "citations": citations,
-            "map_features": features, "cards": cards, "follow_ups": follow_ups,
-            "faithfulness": res.faithfulness, "internals": {"cached_from": now.isoformat()},
-        })
-    yield {"event": "done", "data": {"verified": verified, "abstained": abstain, "faithfulness": res.faithfulness, "follow_ups": follow_ups}}
+        await cache.store(
+            bucket,
+            qu.intent,
+            qvec,
+            {
+                "answer": final_answer,
+                "language": qu.language,
+                "intent": qu.intent,
+                "citations": citations,
+                "map_features": features,
+                "cards": cards,
+                "follow_ups": follow_ups,
+                "faithfulness": res.faithfulness,
+                "internals": {"cached_from": now.isoformat()},
+            },
+        )
+    yield {
+        "event": "done",
+        "data": {
+            "verified": verified,
+            "abstained": abstain,
+            "faithfulness": res.faithfulness,
+            "follow_ups": follow_ups,
+        },
+    }

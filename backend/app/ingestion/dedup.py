@@ -96,7 +96,9 @@ async def assign_cluster(
     ).all()
     match = None
     for r in rows:
-        near_text = r.simhash is not None and hamming(int(r.simhash), simhash) <= SIMHASH_MAX_DISTANCE
+        near_text = (
+            r.simhash is not None and hamming(int(r.simhash), simhash) <= SIMHASH_MAX_DISTANCE
+        )
         if near_text or float(r.sim) >= threshold:
             match = r
             break
@@ -130,4 +132,9 @@ async def assign_cluster(
     log.info(
         "dedup cluster", extra={"cluster": cluster_id, "size": len(members), "canonical": canonical}
     )
-    return {"clustered": True, "cluster_id": cluster_id, "size": len(members), "canonical": canonical}
+    return {
+        "clustered": True,
+        "cluster_id": cluster_id,
+        "size": len(members),
+        "canonical": canonical,
+    }

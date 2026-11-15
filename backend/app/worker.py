@@ -72,8 +72,17 @@ async def _eval_job(stats: jobs.JobStats) -> None:
     import sys
 
     proc = await asyncio.create_subprocess_exec(
-        sys.executable, "-m", "app.cli", "eval", "run", "--subset", "smoke", "--label", "nightly-smoke",
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        sys.executable,
+        "-m",
+        "app.cli",
+        "eval",
+        "run",
+        "--subset",
+        "smoke",
+        "--label",
+        "nightly-smoke",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
     )
     out, _ = await proc.communicate()
     stats.details = {"exit_code": proc.returncode, "tail": out.decode(errors="ignore")[-1500:]}
@@ -85,19 +94,42 @@ def schedule(scheduler: AsyncIOScheduler) -> None:
     s = get_settings()
     tz = s.timezone
     plan = [
-        ("dtp", s.schedule_dtp), ("news", s.schedule_news), ("rss", s.schedule_rss),
-        ("tomtom", s.schedule_tomtom_tick), ("weather", s.schedule_weather),
-        ("gazetteer", s.schedule_gazetteer), ("expire", s.schedule_expire),
+        ("dtp", s.schedule_dtp),
+        ("news", s.schedule_news),
+        ("rss", s.schedule_rss),
+        ("tomtom", s.schedule_tomtom_tick),
+        ("weather", s.schedule_weather),
+        ("gazetteer", s.schedule_gazetteer),
+        ("expire", s.schedule_expire),
         ("retention", s.schedule_retention),
     ]
     for name, cron in plan:
         source_id, fn = jobs.JOBS[name]
-        scheduler.add_job(jobs.run_job, CronTrigger.from_crontab(cron, timezone=tz), args=[source_id, name, fn],
-                          id=name, max_instances=1, coalesce=True, misfire_grace_time=300)
-    scheduler.add_job(jobs.run_job, CronTrigger.from_crontab(s.schedule_alerts, timezone=tz),
-                      args=["system", "alerts", _alerts_job], id="alerts", max_instances=1, coalesce=True)
-    scheduler.add_job(jobs.run_job, CronTrigger.from_crontab(s.schedule_eval, timezone=tz),
-                      args=["system", "eval-smoke", _eval_job, 7200], id="eval", max_instances=1, coalesce=True)
+        scheduler.add_job(
+            jobs.run_job,
+            CronTrigger.from_crontab(cron, timezone=tz),
+            args=[source_id, name, fn],
+            id=name,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
+        )
+    scheduler.add_job(
+        jobs.run_job,
+        CronTrigger.from_crontab(s.schedule_alerts, timezone=tz),
+        args=["system", "alerts", _alerts_job],
+        id="alerts",
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        jobs.run_job,
+        CronTrigger.from_crontab(s.schedule_eval, timezone=tz),
+        args=["system", "eval-smoke", _eval_job, 7200],
+        id="eval",
+        max_instances=1,
+        coalesce=True,
+    )
 
 
 async def main() -> None:
@@ -108,9 +140,15 @@ async def main() -> None:
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
     schedule(scheduler)
     scheduler.start()
-    log.info("worker started", extra={"jobs": [j.id for j in scheduler.get_jobs()], "features": settings.feature_flags()})
+    log.info(
+        "worker started",
+        extra={"jobs": [j.id for j in scheduler.get_jobs()], "features": settings.feature_flags()},
+    )
     # kick off a first round of fast jobs so a fresh install fills quickly
-    startup = [asyncio.create_task(jobs.run_job(*jobs.JOBS[n][:1], n, jobs.JOBS[n][1])) for n in ("weather", "dtp", "news", "tomtom")]
+    startup = [
+        asyncio.create_task(jobs.run_job(*jobs.JOBS[n][:1], n, jobs.JOBS[n][1]))
+        for n in ("weather", "dtp", "news", "tomtom")
+    ]
     listener = asyncio.create_task(alert_listener())
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

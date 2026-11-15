@@ -28,7 +28,9 @@ async def route_line(origin: GeoMatch, dest: GeoMatch) -> tuple[LineString, str]
     if settings.osrm_url:
         url = f"{settings.osrm_url.rstrip('/')}/route/v1/driving/{origin.lon},{origin.lat};{dest.lon},{dest.lat}"
         try:
-            async with httpx.AsyncClient(timeout=8, headers={"User-Agent": settings.user_agent}) as c:
+            async with httpx.AsyncClient(
+                timeout=8, headers={"User-Agent": settings.user_agent}
+            ) as c:
                 resp = await c.get(url, params={"overview": "simplified", "geometries": "geojson"})
                 resp.raise_for_status()
                 coords = resp.json()["routes"][0]["geometry"]["coordinates"]
@@ -109,13 +111,24 @@ async def check_route(
             for r in advisories
         ],
         "incidents": [
-            {"id": r.id, "category": r.category, "description": r.description,
-             "delay_min": round(r.delay_seconds / 60) if r.delay_seconds else None}
+            {
+                "id": r.id,
+                "category": r.category,
+                "description": r.description,
+                "delay_min": round(r.delay_seconds / 60) if r.delay_seconds else None,
+            }
             for r in incidents
         ],
         "segments": [
-            {"segment_id": r.id, "name": r.name, "level": congestion_level(r.current_speed / r.free_flow_speed if r.free_flow_speed else None),
-             "current_speed_kmph": round(r.current_speed), "as_of": fmt_ist(r.observed_at)}
+            {
+                "segment_id": r.id,
+                "name": r.name,
+                "level": congestion_level(
+                    r.current_speed / r.free_flow_speed if r.free_flow_speed else None
+                ),
+                "current_speed_kmph": round(r.current_speed),
+                "as_of": fmt_ist(r.observed_at),
+            }
             for r in segs
         ],
         "weather_flags": sorted({f for r in weather for f in r.flags}),

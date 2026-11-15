@@ -38,13 +38,23 @@ from app.timeutil import IST, now_ist, utcnow
 log = get_logger(__name__)
 
 SOURCES: list[dict[str, str]] = [
-    {"id": "dtp_advisories", "name": "Delhi Traffic Police advisories", "kind": "advisory", "trust_level": "official"},
+    {
+        "id": "dtp_advisories",
+        "name": "Delhi Traffic Police advisories",
+        "kind": "advisory",
+        "trust_level": "official",
+    },
     {"id": "google_news", "name": "Google News RSS", "kind": "news", "trust_level": "news"},
     {"id": "extra_rss", "name": "Publisher RSS feeds", "kind": "news", "trust_level": "news"},
     {"id": "gdelt", "name": "GDELT news backfill", "kind": "news", "trust_level": "news"},
     {"id": "tomtom", "name": "TomTom flow + incidents", "kind": "sensor", "trust_level": "sensor"},
     {"id": "weather", "name": "Open-Meteo weather", "kind": "weather", "trust_level": "sensor"},
-    {"id": "gazetteer", "name": "OSM gazetteer + seed aliases", "kind": "gazetteer", "trust_level": "official"},
+    {
+        "id": "gazetteer",
+        "name": "OSM gazetteer + seed aliases",
+        "kind": "gazetteer",
+        "trust_level": "official",
+    },
     {"id": "system", "name": "Maintenance jobs", "kind": "system", "trust_level": "official"},
 ]
 
@@ -60,9 +70,12 @@ class JobStats:
 async def ensure_sources(session: AsyncSession) -> None:
     settings = get_settings()
     schedules = {
-        "dtp_advisories": settings.schedule_dtp, "google_news": settings.schedule_news,
-        "extra_rss": settings.schedule_rss, "tomtom": settings.schedule_tomtom_tick,
-        "weather": settings.schedule_weather, "gazetteer": settings.schedule_gazetteer,
+        "dtp_advisories": settings.schedule_dtp,
+        "google_news": settings.schedule_news,
+        "extra_rss": settings.schedule_rss,
+        "tomtom": settings.schedule_tomtom_tick,
+        "weather": settings.schedule_weather,
+        "gazetteer": settings.schedule_gazetteer,
     }
     for s in SOURCES:
         stmt = insert(Source).values(**s, schedule=schedules.get(s["id"]), enabled=True)
@@ -85,7 +98,9 @@ async def run_job(
                 if src is not None and not src.enabled:
                     log.info("source disabled; skipping", extra={"source": source_id})
                     return stats
-                run = IngestionRun(source_id=source_id, job=job, started_at=utcnow(), status="running")
+                run = IngestionRun(
+                    source_id=source_id, job=job, started_at=utcnow(), status="running"
+                )
                 s.add(run)
                 await s.flush()
                 run_id = run.id
@@ -96,7 +111,10 @@ async def run_job(
                 status, error = "error", f"{type(exc).__name__}: {exc}"
                 stats.errors += 1
                 INGEST_ERRORS.labels(source_id).inc()
-                log.error("job failed", extra={"source": source_id, "job": job, "tb": traceback.format_exc()[-2000:]})
+                log.error(
+                    "job failed",
+                    extra={"source": source_id, "job": job, "tb": traceback.format_exc()[-2000:]},
+                )
             if stats.errors and status == "ok":
                 status = "partial"
             async with session_scope() as s:
@@ -104,8 +122,13 @@ async def run_job(
                     update(IngestionRun)
                     .where(IngestionRun.id == run_id)
                     .values(
-                        finished_at=utcnow(), status=status, items_seen=stats.seen, items_new=stats.new,
-                        errors=stats.errors, error_message=error, details=stats.details,
+                        finished_at=utcnow(),
+                        status=status,
+                        items_seen=stats.seen,
+                        items_new=stats.new,
+                        errors=stats.errors,
+                        error_message=error,
+                        details=stats.details,
                     )
                 )
                 await s.execute(
@@ -115,7 +138,16 @@ async def run_job(
                 )
     except LockNotAcquiredError:
         log.info("job already running; skipped", extra={"source": source_id, "job": job})
-    log.info("job finished", extra={"source": source_id, "job": job, "seen": stats.seen, "new": stats.new, "errors": stats.errors})
+    log.info(
+        "job finished",
+        extra={
+            "source": source_id,
+            "job": job,
+            "seen": stats.seen,
+            "new": stats.new,
+            "errors": stats.errors,
+        },
+    )
     return stats
 
 
@@ -131,7 +163,9 @@ async def _process_drafts(drafts: list[pipeline.DocumentDraft], stats: JobStats)
                 chunk_ids += res.chunk_ids
         except Exception as exc:
             stats.errors += 1
-            log.warning("document failed", extra={"url": d.url, "err": f"{type(exc).__name__}: {exc}"[:300]})
+            log.warning(
+                "document failed", extra={"url": d.url, "err": f"{type(exc).__name__}: {exc}"[:300]}
+            )
     return chunk_ids
 
 
@@ -161,7 +195,9 @@ async def job_dtp_incremental(stats: JobStats) -> None:
             await _process_drafts(drafts, stats)
 
 
-async def job_dtp_backfill(stats: JobStats, start: int = 1, limit: int | None = None, max_id: int | None = None) -> None:
+async def job_dtp_backfill(
+    stats: JobStats, start: int = 1, limit: int | None = None, max_id: int | None = None
+) -> None:
     async with PoliteFetcher() as f:
         urls = await dtp_advisories.discover_backfill(f, start=start, max_id=max_id)
         if limit:
@@ -236,7 +272,9 @@ async def _poll_flow(f: PoliteFetcher, segments: Any, key: str, stats: JobStats)
     observed = 0
     for seg in segments:
         try:
-            obs = await tomtom.fetch_flow(f, tomtom.SegmentSeed(seg.id, seg.name, seg.road, seg.lat, seg.lon), key)
+            obs = await tomtom.fetch_flow(
+                f, tomtom.SegmentSeed(seg.id, seg.name, seg.road, seg.lat, seg.lon), key
+            )
         except Exception as exc:
             stats.errors += 1
             log.warning("flow fetch failed", extra={"segment": seg.id, "err": str(exc)[:200]})
@@ -247,9 +285,13 @@ async def _poll_flow(f: PoliteFetcher, segments: Any, key: str, stats: JobStats)
         async with session_scope() as s:
             s.add(
                 TrafficFlowObs(
-                    segment_id=obs.segment_id, observed_at=now, current_speed=obs.current_speed,
-                    free_flow_speed=obs.free_flow_speed, current_travel_time=obs.current_travel_time,
-                    free_flow_travel_time=obs.free_flow_travel_time, confidence=obs.confidence,
+                    segment_id=obs.segment_id,
+                    observed_at=now,
+                    current_speed=obs.current_speed,
+                    free_flow_speed=obs.free_flow_speed,
+                    current_travel_time=obs.current_travel_time,
+                    free_flow_travel_time=obs.free_flow_travel_time,
+                    confidence=obs.confidence,
                     road_closure=obs.road_closure,
                 )
             )
@@ -257,12 +299,16 @@ async def _poll_flow(f: PoliteFetcher, segments: Any, key: str, stats: JobStats)
                 from shapely.geometry import LineString
 
                 await s.execute(
-                    text("UPDATE segments SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = :id AND (geom IS NULL OR ST_GeometryType(geom) = 'ST_Point')"),
+                    text(
+                        "UPDATE segments SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = :id AND (geom IS NULL OR ST_GeometryType(geom) = 'ST_Point')"
+                    ),
                     {"wkt": LineString(obs.coordinates).wkt, "id": obs.segment_id},
                 )
     stats.seen += observed
     stats.details["flow_observations"] = observed
-    await get_redis().publish("events:flow_poll", json.dumps({"at": now.isoformat(), "n": observed}))
+    await get_redis().publish(
+        "events:flow_poll", json.dumps({"at": now.isoformat(), "n": observed})
+    )
 
 
 async def _poll_incidents(f: PoliteFetcher, key: str, stats: JobStats) -> None:
@@ -276,10 +322,19 @@ async def _poll_incidents(f: PoliteFetcher, key: str, stats: JobStats) -> None:
             existing = await s.get(TrafficIncident, inc.id)
             is_new = existing is None
             values = dict(
-                category=inc.category, icon_category=inc.icon_category, description=inc.description,
-                from_name=inc.from_name, to_name=inc.to_name, road_numbers=inc.road_numbers,
-                delay_seconds=inc.delay_seconds, magnitude=inc.magnitude, length_m=inc.length_m,
-                start_time=inc.start_time, end_time=inc.end_time, last_seen_at=now, is_active=True,
+                category=inc.category,
+                icon_category=inc.icon_category,
+                description=inc.description,
+                from_name=inc.from_name,
+                to_name=inc.to_name,
+                road_numbers=inc.road_numbers,
+                delay_seconds=inc.delay_seconds,
+                magnitude=inc.magnitude,
+                length_m=inc.length_m,
+                start_time=inc.start_time,
+                end_time=inc.end_time,
+                last_seen_at=now,
+                is_active=True,
                 raw=inc.raw,
             )
             if is_new:
@@ -290,7 +345,9 @@ async def _poll_incidents(f: PoliteFetcher, key: str, stats: JobStats) -> None:
             await s.flush()
             if wkt:
                 await s.execute(
-                    text("UPDATE traffic_incidents SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = :id"),
+                    text(
+                        "UPDATE traffic_incidents SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = :id"
+                    ),
                     {"wkt": wkt, "id": inc.id},
                 )
             res = await pipeline.process(s, tomtom.incident_draft(inc))
@@ -301,7 +358,9 @@ async def _poll_incidents(f: PoliteFetcher, key: str, stats: JobStats) -> None:
                 )
                 if wkt and res.chunk_ids:
                     await s.execute(
-                        text("UPDATE chunks SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = ANY(:ids)"),
+                        text(
+                            "UPDATE chunks SET geom = ST_GeomFromText(:wkt, 4326) WHERE id = ANY(:ids)"
+                        ),
                         {"wkt": wkt, "ids": res.chunk_ids},
                     )
         stats.seen += 1
@@ -332,17 +391,39 @@ async def job_weather(stats: JobStats) -> None:
     async with session_scope() as s:
         for r in rows:
             stmt = insert(WeatherObs).values(
-                zone=r.zone, lat=r.lat, lon=r.lon, observed_at=r.observed_at, kind=r.kind,
-                temperature=r.temperature, precipitation=r.precipitation, rain=r.rain,
-                visibility=r.visibility, weather_code=r.weather_code, flags=r.flags,
+                zone=r.zone,
+                lat=r.lat,
+                lon=r.lon,
+                observed_at=r.observed_at,
+                kind=r.kind,
+                temperature=r.temperature,
+                precipitation=r.precipitation,
+                rain=r.rain,
+                visibility=r.visibility,
+                weather_code=r.weather_code,
+                flags=r.flags,
             )
             stmt = stmt.on_conflict_do_update(
                 constraint="uq_weather_obs_zone_time_kind",
-                set_={c: stmt.excluded[c] for c in ("temperature", "precipitation", "rain", "visibility", "weather_code", "flags")},
+                set_={
+                    c: stmt.excluded[c]
+                    for c in (
+                        "temperature",
+                        "precipitation",
+                        "rain",
+                        "visibility",
+                        "weather_code",
+                        "flags",
+                    )
+                },
             )
             await s.execute(stmt)
         # an hour that was 'forecast' and is now past becomes 'history' on next fetch
-        await s.execute(text("DELETE FROM weather_obs WHERE kind='forecast' AND observed_at < now() - interval '2 hours'"))
+        await s.execute(
+            text(
+                "DELETE FROM weather_obs WHERE kind='forecast' AND observed_at < now() - interval '2 hours'"
+            )
+        )
     stats.seen = len(rows)
     stats.details["flags"] = sorted({fl for r in rows if r.kind == "current" for fl in r.flags})
 
@@ -372,18 +453,36 @@ async def seed_segments_and_events() -> dict[str, int]:
     async with session_scope() as s:
         for seg in segs:
             stmt = insert(Segment).values(
-                id=seg.id, name=seg.name, road=seg.road, lat=seg.lat, lon=seg.lon,
-                geom=f"SRID=4326;POINT({seg.lon} {seg.lat})", aliases=[seg.road],
+                id=seg.id,
+                name=seg.name,
+                road=seg.road,
+                lat=seg.lat,
+                lon=seg.lon,
+                geom=f"SRID=4326;POINT({seg.lon} {seg.lat})",
+                aliases=[seg.road],
             )
-            await s.execute(stmt.on_conflict_do_update(index_elements=[Segment.id], set_={"name": stmt.excluded.name, "road": stmt.excluded.road, "lat": stmt.excluded.lat, "lon": stmt.excluded.lon}))
+            await s.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=[Segment.id],
+                    set_={
+                        "name": stmt.excluded.name,
+                        "road": stmt.excluded.road,
+                        "lat": stmt.excluded.lat,
+                        "lon": stmt.excluded.lon,
+                    },
+                )
+            )
         await s.execute(text("DELETE FROM events WHERE source = 'seed'"))
         for e in events:
             match = await geocoder.geocode(e["venue"], s)
             s.add(
                 Event(
-                    name=e["name"], venue=e["venue"], place_id=match.place_id if match else None,
+                    name=e["name"],
+                    venue=e["venue"],
+                    place_id=match.place_id if match else None,
                     start_at=datetime.fromisoformat(e["start"]).replace(tzinfo=IST),
-                    end_at=datetime.fromisoformat(e["end"]).replace(tzinfo=IST), source="seed",
+                    end_at=datetime.fromisoformat(e["end"]).replace(tzinfo=IST),
+                    source="seed",
                 )
             )
     return {"segments": len(segs), "events": len(events)}
@@ -405,7 +504,9 @@ async def job_retention(stats: JobStats) -> None:
     async with session_scope() as s:
         rows = (
             await s.execute(
-                text("SELECT id, raw_path FROM raw_documents WHERE fetched_at < :c AND raw_path IS NOT NULL"),
+                text(
+                    "SELECT id, raw_path FROM raw_documents WHERE fetched_at < :c AND raw_path IS NOT NULL"
+                ),
                 {"c": cutoff},
             )
         ).all()
@@ -415,10 +516,14 @@ async def job_retention(stats: JobStats) -> None:
                 removed += 1
             except OSError:
                 stats.errors += 1
-        await s.execute(text("UPDATE raw_documents SET raw_path = NULL WHERE fetched_at < :c"), {"c": cutoff})
+        await s.execute(
+            text("UPDATE raw_documents SET raw_path = NULL WHERE fetched_at < :c"), {"c": cutoff}
+        )
         # drop news full text, keep chunks/metadata
         await s.execute(
-            text("UPDATE documents SET text = '' WHERE trust_level = 'news' AND created_at < :c AND text <> ''"),
+            text(
+                "UPDATE documents SET text = '' WHERE trust_level = 'news' AND created_at < :c AND text <> ''"
+            ),
             {"c": cutoff},
         )
         # downsample flow observations older than N days to hourly means
