@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "phase-*"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    # The DB needs PostGIS + pgvector, which no single upstream image ships,
+    # so it is built from infra/db and started with `docker run` below.
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install
+        run: uv pip install --system -e ".[dev]"
+      - name: Ruff
+        run: ruff check . && ruff format --check .
+      - name: Mypy
+        run: mypy app
+      - name: Start Postgres (pgvector + PostGIS) and Redis
+        working-directory: .
+        run: |
+          docker build -t copilot-db infra/db
+          docker run -d --name db -p 5432:5432 -e POSTGRES_USER=copilot -e POSTGRES_PASSWORD=copilot -e POSTGRES_DB=copilot copilot-db
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 30); do docker exec db pg_isready -U copilot && break; sleep 2; done
+      - name: Migrate
+        env:
+          DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot
+        run: alembic upgrade head
+      - name: Tests (unit + integration)
+        env:
+          DATABASE_URL: postgresql+asyncpg://copilot:copilot@localhost:5432/copilot
+          REDIS_URL: redis://localhost:6379/0
+          APP_ENV: test
+        run: pytest -m "not network" --cov=app --cov-report=term-missing:skip-covered
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t copilot-backend -f backend/Dockerfile .
+      - name: Build db image
+        run: docker build -t copilot-db infra/db
