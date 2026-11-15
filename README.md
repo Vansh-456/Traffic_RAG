@@ -65,9 +65,11 @@ cd ../frontend && npm ci && npm run dev
 ## Stack
 
 FastAPI · SQLAlchemy 2 (async) · Alembic · Postgres 16 + pgvector (HNSW) + PostGIS + pg_trgm ·
-Redis · APScheduler · LiteLLM (default **Groq** `openai/gpt-oss-120b` for answers,
-`llama-3.1-8b-instant` for fast tasks, **Gemini Flash** fallback; per-model RPM limiter, circuit
-breaker, JSON-schema retries) · bge-m3 / bge-reranker-v2-m3 (optional) · Tesseract `hin+eng` ·
+Redis · APScheduler · LiteLLM (default **Groq**: `openai/gpt-oss-120b` for answers,
+`openai/gpt-oss-20b` for fast tasks, `qwen/qwen3.8-27b` for routing and verification, and
+**Gemini 3.5 Flash** as last-resort fallback; Redis-shared RPM and tokens-per-minute budgets with
+fail-over across quota pools, circuit breaker, JSON-schema retries. See
+[free-tier notes](docs/deployment.md#5-running-on-free-llm-tiers-groq--gemini)) · bge-m3 / bge-reranker-v2-m3 (optional) · Tesseract `hin+eng` ·
 trafilatura · Langfuse · Prometheus · Next.js 14 · Tailwind · MapLibre GL · Radix UI.
 
 ## CLI

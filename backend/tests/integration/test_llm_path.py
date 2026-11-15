@@ -26,7 +26,13 @@ NOW = datetime(2026, 11, 10, 9, 0, tzinfo=IST)
 class FakeLLM(LLMClient):
     def __init__(self, answer: str, unsupported_index: int | None = None) -> None:
         super().__init__(
-            Settings(_env_file=None, groq_api_key="test", gemini_api_key="", llm_rpm_limit=1000)
+            Settings(
+                _env_file=None,
+                groq_api_key="test",
+                gemini_api_key="",
+                llm_rpm_limit=1000,
+                llm_tpm_limit=10**7,  # the fake model has no real quota
+            )
         )
         self.answer = answer
         self.unsupported_index = unsupported_index

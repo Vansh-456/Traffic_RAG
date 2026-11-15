@@ -131,3 +131,52 @@ def test_map_features_and_cards_from_tools():
     cards = gen.cards(ev)
     assert cards[0]["type"] == "live_traffic" and cards[0]["current_speed"] == 14
     _ = datetime.now(IST)
+
+
+async def test_lexical_fallback_does_not_rewrite_llm_answers():
+    llm = LLMClient(Settings(_env_file=None, groq_api_key="", gemini_api_key=""))
+    answer = "Ring Road is jammed because of a protest near ITO [1]."
+    res = await verify(answer, _evidence(), llm, lexical_may_rewrite=False)
+    assert res.method == "lexical-advisory" and not res.changed and res.revised_text == answer
+
+
+def test_split_keeps_list_markers_with_items():
+    from app.rag.verification import _tidy
+
+    parts = split_claims(
+        "**Likely causes:**\n1. Festival diversions on Vikas Marg [1].\n2. Heavy rain [2].\n**Tips:**"
+    )
+    assert parts[1].startswith("1. Festival") and parts[2].startswith("2. Heavy")
+    assert _tidy(["**Likely causes:**", "1.", "2.", "**Tips:**"]) == []
+    assert _tidy(["**Tips:**", "- Use the metro."]) == ["**Tips:**", "- Use the metro."]
+
+
+def test_alt_citations_are_normalised_in_stream():
+    s = gen.FollowupStripper()
+    shown = (
+        "".join(s.feed(t) for t in ["Yamuna ghats closed 【", "3†source】 and more【1】."])
+        + s.flush()
+    )
+    assert shown == "Yamuna ghats closed [3] and more[1]."
+    assert gen.cited_ids("x 【2】 y") == {2}
+
+
+def test_non_claims_are_not_checked():
+    from app.rag.verification import is_checkable
+
+    assert not is_checkable("**What to watch for**")
+    assert not is_checkable("For real-time updates, check traffic.delhipolice.gov.in or call 1095.")
+    assert not is_checkable("- Use public transport where possible.")
+    assert is_checkable(
+        "- Use parallel roads such as Ring Road instead of the closed sections."
+    )  # names a road
+    assert is_checkable("Schools in the affected zones are closed on 16 Nov.")
+
+
+def test_unavailability_statements_are_not_claims():
+    from app.rag.verification import is_checkable
+
+    assert not is_checkable(
+        "No live speed data is available right now, so exact slowdown levels cannot be quoted."
+    )
+    assert is_checkable("Ring Road is moving slowly because of the Chhath diversions.")

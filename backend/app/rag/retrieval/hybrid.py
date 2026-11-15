@@ -223,9 +223,13 @@ async def hybrid_search(
 
     t0 = time.perf_counter()
     rr = reranker if toggles.rerank else LexicalReranker()
-    rerank_scores = await rerank(
-        queries[0], [(c.chunk_id, c.text_with_context[:2000]) for c in candidates], rr
-    )
+    # score against the original and its rewrites (incl. the English one) and keep the
+    # best per passage, so a Hindi question can still match an English advisory
+    passages = [(c.chunk_id, c.text_with_context[:2000]) for c in candidates]
+    rerank_scores: dict[int, float] = {}
+    for q in list(dict.fromkeys(queries))[:3]:
+        for cid, score in (await rerank(q, passages, rr)).items():
+            rerank_scores[cid] = max(score, rerank_scores.get(cid, 0.0))
     if not toggles.rerank:
         # without a reranker, rank purely by fused RRF (normalised to [0,1])
         top = max((c.rrf for c in candidates), default=1.0) or 1.0

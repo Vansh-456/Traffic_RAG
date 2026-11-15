@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEWS_QUERIES = [
@@ -60,9 +60,21 @@ class Settings(BaseSettings):
     # --- LLM ---
     llm_provider: str = "groq"
     llm_model_answer: str = "groq/openai/gpt-oss-120b"
-    llm_model_fast: str = "groq/llama-3.1-8b-instant"
-    llm_model_fallback: str = "gemini/gemini-2.0-flash"
+    llm_model_fast: str = "groq/openai/gpt-oss-20b"
+    llm_model_fallback: str = "gemini/gemini-3.5-flash"
+    # routing + claim verification: a separate Groq quota pool from the fast model
+    llm_model_verify: str = "groq/qwen/qwen3.8-27b"
     llm_rpm_limit: int = 28
+    # worker/ingestion share of the RPM window (chat gets the rest)
+    llm_rpm_limit_background: int = 12
+    # tokens/minute per Groq model (free tier: 8,000)
+    llm_tpm_limit: int = 7500
+    # if a model needs longer than this to free budget, use the fallback model instead
+    llm_max_queue_seconds: float = 2.5
+    # one strict regeneration when > 30 % of claims are unsupported (doubles tokens;
+    # set false on free tiers to keep only the hedged/trimmed revision)
+    regenerate_unsupported: bool = True
+    llm_reasoning_effort: str = "low"  # gpt-oss models: low | medium | high
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 3
     groq_api_key: str = ""
@@ -143,6 +155,14 @@ class Settings(BaseSettings):
     schedule_alerts: str = "*/5 * * * *"
     schedule_retention: str = "0 3 * * *"
     schedule_eval: str = "0 4 * * *"
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _drop_comment_values(cls, value: object) -> object:
+        """Treat `KEY=   # comment` (as some .env parsers deliver it) as empty."""
+        if isinstance(value, str) and value.strip().startswith("#"):
+            return ""
+        return value
 
     @property
     def news_queries(self) -> list[str]:

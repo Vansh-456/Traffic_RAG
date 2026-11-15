@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import signal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -24,6 +25,7 @@ from app.providers.llm import attach_redis
 from app.redis_client import CHANNEL_NEW_CHUNK, get_redis
 
 log = get_logger("worker")
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
 async def bootstrap() -> None:
@@ -136,6 +138,9 @@ async def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     attach_redis(get_redis())
+    from app.providers.llm import get_llm
+
+    get_llm().background = True  # ingestion yields RPM headroom to interactive chat
     await bootstrap()
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
     schedule(scheduler)

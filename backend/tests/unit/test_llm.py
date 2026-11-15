@@ -40,12 +40,16 @@ def test_extract_json_variants():
 
 def test_candidate_models_respects_keys_and_breaker():
     c = LLMClient(_settings(gemini_api_key=""))
-    assert c.candidate_models("fast") == ["groq/llama-3.1-8b-instant"]
+    assert c.candidate_models("fast") == ["groq/openai/gpt-oss-20b", "groq/qwen/qwen3.8-27b"]
     c2 = LLMClient(_settings())
-    assert c2.candidate_models("answer") == ["groq/openai/gpt-oss-120b", "gemini/gemini-2.0-flash"]
+    assert c2.candidate_models("answer") == [
+        "groq/openai/gpt-oss-120b",
+        "groq/openai/gpt-oss-20b",
+        "gemini/gemini-3.5-flash",
+    ]
     for _ in range(3):
         c2.breaker.record_failure("groq/openai/gpt-oss-120b")
-    assert c2.candidate_models("answer") == ["gemini/gemini-2.0-flash"]
+    assert c2.candidate_models("answer") == ["groq/openai/gpt-oss-20b", "gemini/gemini-3.5-flash"]
 
 
 def test_circuit_breaker_cooldown():
@@ -91,7 +95,7 @@ async def test_fallback_model_used_on_failure(monkeypatch):
 
     monkeypatch.setattr(c, "_acompletion", fake)
     assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
-    assert seen == ["groq/llama-3.1-8b-instant", "gemini/gemini-2.0-flash"]
+    assert seen == ["groq/openai/gpt-oss-20b", "groq/qwen/qwen3.8-27b", "gemini/gemini-3.5-flash"]
 
 
 async def test_disabled_without_keys():
@@ -106,3 +110,68 @@ async def test_disabled_without_keys():
     )
     with pytest.raises(LLMUnavailableError):
         await c.complete([{"role": "user", "content": "x"}])
+
+
+async def test_saturated_groq_model_falls_back_without_waiting(monkeypatch):
+    c = LLMClient(_settings(llm_tpm_limit=3000, llm_max_queue_seconds=1))
+    await c.tpm.reserve("groq/openai/gpt-oss-20b", 3000)  # budget used up
+    seen = []
+
+    async def fake(model, **kw):
+        seen.append(model)
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert seen == ["groq/qwen/qwen3.8-27b"]  # next Groq pool, not Gemini
+
+
+async def test_rate_limit_sets_cooldown_not_breaker(monkeypatch):
+    c = LLMClient(_settings(llm_max_retries=1))
+
+    class RateLimitError(Exception):
+        pass
+
+    async def fake(model, **kw):
+        if model.startswith("groq"):
+            raise RateLimitError("Rate limit reached ... Please try again in 7.5s.")
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert not c.breaker.is_open("groq/openai/gpt-oss-20b")
+    assert 6 < await c.tpm.wait_seconds("groq/openai/gpt-oss-20b", 1) <= 7.5
+
+
+def test_verify_role_candidates():
+    c = LLMClient(_settings())
+    assert c.candidate_models("verify") == [
+        "groq/qwen/qwen3.8-27b",
+        "groq/openai/gpt-oss-20b",
+        "gemini/gemini-3.5-flash",
+    ]
+
+
+async def test_rescue_pass_waits_for_soonest_groq_model(monkeypatch):
+    c = LLMClient(_settings(llm_max_queue_seconds=0.1, gemini_api_key=""))
+    await c.tpm.block("groq/openai/gpt-oss-20b", 0.6)  # frees up soon
+    await c.tpm.block("groq/qwen/qwen3.8-27b", 30)
+    seen = []
+
+    async def fake(model, **kw):
+        seen.append(model)
+        return _resp("ok")
+
+    monkeypatch.setattr(c, "_acompletion", fake)
+    assert await c.complete_text([{"role": "user", "content": "x"}], "fast") == "ok"
+    assert seen == ["groq/openai/gpt-oss-20b"]  # waited ~0.6 s rather than failing
+
+
+def test_wrapped_429_is_detected():
+    from app.providers.llm import _is_rate_limit
+
+    class MidStreamFallbackError(Exception):
+        pass
+
+    assert _is_rate_limit(MidStreamFallbackError("vertex_ai_betaException 429 RESOURCE_EXHAUSTED"))
+    assert not _is_rate_limit(ValueError("bad request"))

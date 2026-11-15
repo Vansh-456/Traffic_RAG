@@ -14,6 +14,7 @@ Features:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -32,18 +33,18 @@ from tenacity import (
 from app.config import Settings, get_settings
 from app.observability.logging import get_logger
 from app.observability.metrics import LLM_CALLS, LLM_TOKENS
-from app.providers.ratelimit import RateLimiter
+from app.providers.ratelimit import RateLimiter, TokenBudget
 
 log = get_logger(__name__)
 
-Role = Literal["answer", "fast"]
+Role = Literal["answer", "fast", "verify", "route"]
 T = TypeVar("T", bound=BaseModel)
 
 # Rough USD per 1M tokens (input, output) for cost estimates in internals.
 PRICING: dict[str, tuple[float, float]] = {
     "groq/openai/gpt-oss-120b": (0.15, 0.75),
-    "groq/llama-3.1-8b-instant": (0.05, 0.08),
-    "gemini/gemini-2.0-flash": (0.10, 0.40),
+    "groq/openai/gpt-oss-20b": (0.075, 0.30),
+    "gemini/gemini-3.5-flash": (0.30, 2.50),
 }
 
 
@@ -114,10 +115,15 @@ class CircuitBreaker:
             log.warning("circuit opened for model", extra={"model": model})
 
 
+def _is_rate_limit(exc: BaseException) -> bool:
+    """429s, including ones LiteLLM wraps (e.g. MidStreamFallbackError)."""
+    text = f"{type(exc).__name__} {exc}"
+    return "RateLimit" in text or "429" in text or "RESOURCE_EXHAUSTED" in text
+
+
 def _is_transient(exc: BaseException) -> bool:
     name = type(exc).__name__
     transient = (
-        "RateLimitError",
         "Timeout",
         "APIConnectionError",
         "ServiceUnavailableError",
@@ -133,7 +139,7 @@ _JSON_BLOCK = re.compile(r"\{.*\}|\[.*\]", re.DOTALL)
 
 def extract_json(text: str) -> Any:
     """Parse JSON from a model reply, tolerating code fences / prose around it."""
-    text = text.strip()
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
     try:
@@ -154,6 +160,9 @@ class LLMClient:
         self.settings = settings or get_settings()
         self.limiter = limiter or RateLimiter(self.settings.llm_rpm_limit)
         self.breaker = CircuitBreaker()
+        self.tpm = TokenBudget(self.settings.llm_tpm_limit)
+        # background clients (worker, CLI ingestion) yield RPM headroom to interactive chat
+        self.background = False
         self._push_keys_to_env()
 
     @property
@@ -175,7 +184,11 @@ class LLMClient:
                 os.environ[key] = value
 
     def model_for(self, role: Role) -> str:
-        return self.settings.llm_model_answer if role == "answer" else self.settings.llm_model_fast
+        if role == "answer":
+            return self.settings.llm_model_answer
+        if role in ("verify", "route"):
+            return self.settings.llm_model_verify
+        return self.settings.llm_model_fast
 
     def _key_available(self, model: str) -> bool:
         prefix = model.split("/", 1)[0]
@@ -189,9 +202,15 @@ class LLMClient:
         }.get(prefix, True)
 
     def candidate_models(self, role: Role) -> list[str]:
-        models = [self.model_for(role)]
-        if self.settings.llm_model_fallback not in models:
-            models.append(self.settings.llm_model_fallback)
+        # each Groq model has its own token quota, so fall back across them before Gemini
+        s = self.settings
+        chain = {
+            "answer": [s.llm_model_answer, s.llm_model_fast],
+            "fast": [s.llm_model_fast, s.llm_model_verify],
+            "verify": [s.llm_model_verify, s.llm_model_fast],
+            "route": [s.llm_model_verify, s.llm_model_fast],
+        }[role]
+        models = list(dict.fromkeys([*chain, s.llm_model_fallback]))
         usable = [m for m in models if self._key_available(m) and not self.breaker.is_open(m)]
         if not usable:
             # all circuits open: try anyway with keys available (half-open)
@@ -201,12 +220,97 @@ class LLMClient:
     def _extra_kwargs(self, model: str) -> dict[str, Any]:
         if model.startswith("ollama"):
             return {"api_base": self.settings.ollama_base_url}
+        if "gpt-oss" in model:
+            # reasoning models: keep hidden reasoning short (latency + token budget)
+            return {"extra_body": {"reasoning_effort": self.settings.llm_reasoning_effort}}
         return {}
+
+    @staticmethod
+    def _estimate_tokens(kwargs: dict[str, Any]) -> int:
+        """Groq counts prompt + max_tokens against TPM; estimate both (~4 chars/token)."""
+        chars = sum(len(str(m.get("content") or "")) for m in kwargs.get("messages", []))
+        if kwargs.get("tools"):
+            chars += len(json.dumps(kwargs["tools"]))
+        return chars // 4 + int(kwargs.get("max_tokens") or 512)
+
+    async def _wait_for(self, model: str, tokens: int) -> float:
+        if not model.startswith("groq/"):  # no token accounting; only provider 429 cooldowns
+            return await self.tpm.wait_seconds(model, 0)
+        # background traffic may only use half of each model's budget
+        share = self.settings.llm_tpm_limit // 2 if self.background else None
+        return await self.tpm.wait_seconds(model, tokens, limit=share)
+
+    async def has_budget(self, role: Role, tokens: int) -> bool:
+        """True if the role's primary model could serve a call of `tokens` right now."""
+        return await self._wait_for(self.model_for(role), tokens) == 0
+
+    async def _models_to_try(self, role: Role, tokens: int) -> AsyncIterator[str]:
+        """Yield models ready to call (budget reserved), in this order:
+
+        1. Groq candidates that are free within LLM_MAX_QUEUE_SECONDS (each Groq
+           model has its own token quota);
+        2. a short wait (<= 8 s) for the soonest Groq model, which beats a slow or
+           rate-limited fallback on free tiers;
+        3. non-Groq fallbacks (Gemini), respecting their 429 cooldowns;
+        4. last resort: wait up to 30 s for the soonest Groq model.
+        """
+        candidates = self.candidate_models(role)
+        groq = [m for m in candidates if m.startswith("groq/")]
+        others = [m for m in candidates if not m.startswith("groq/")]
+        threshold = 60.0 if self.background else self.settings.llm_max_queue_seconds
+
+        tried: set[str] = set()
+
+        async def soonest(limit: float) -> str | None:
+            # only models skipped for budget reasons, never ones that already failed
+            pool = [m for m in groq if m not in tried]
+            if not pool:
+                return None
+            wait, model = min([(await self._wait_for(m, tokens), m) for m in pool])
+            if wait > limit:
+                return None
+            log.info(
+                "waiting for the soonest model", extra={"model": model, "wait_s": round(wait, 1)}
+            )
+            await asyncio.sleep(wait)
+            await self.tpm.reserve(model, tokens)
+            tried.add(model)
+            return model
+
+        for model in groq:
+            wait = await self._wait_for(model, tokens)
+            if wait > threshold:
+                log.info(
+                    "model saturated; trying next", extra={"model": model, "wait_s": round(wait, 1)}
+                )
+                continue
+            if wait > 0:
+                await asyncio.sleep(wait)
+            await self.tpm.reserve(model, tokens)
+            tried.add(model)
+            yield model
+        if picked := await soonest(8.0):
+            yield picked
+        for model in others:
+            if await self._wait_for(model, tokens) <= threshold:
+                yield model
+        if picked := await soonest(30.0):
+            yield picked
+
+    async def _on_rate_limit(self, model: str, exc: BaseException) -> None:
+        """Honour the provider's 'try again in Ns' hint as a cooldown (not a breaker failure)."""
+        m = re.search(r"try again in ([0-9.]+)\s*(ms|s)", str(exc))
+        seconds = float(m.group(1)) / (1000 if m and m.group(2) == "ms" else 1) if m else 10.0
+        await self.tpm.block(model, seconds)
 
     async def _acompletion(self, model: str, **kwargs: Any) -> Any:
         import litellm
 
-        await self.limiter.acquire(model)
+        limit = self.settings.llm_rpm_limit_background if self.background else None
+        await self.limiter.acquire(model, max_wait=300.0 if self.background else 90.0, limit=limit)
+        if model.startswith("gemini/") and kwargs.get("max_tokens"):
+            # Gemini 3.x "thinking" tokens count against max_tokens; leave room for the answer
+            kwargs["max_tokens"] = max(int(kwargs["max_tokens"]) * 3, 2048)
         return await litellm.acompletion(
             model=model,
             timeout=self.settings.llm_timeout_seconds,
@@ -230,17 +334,17 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        for model in self.candidate_models(role):
-            kwargs: dict[str, Any] = {
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-            }
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-            if tools:
-                kwargs["tools"] = tools
-                kwargs["tool_choice"] = "auto"
+        kwargs: dict[str, Any] = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            kwargs["response_format"] = {"type": "json_object"}
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
+        async for model in self._models_to_try(role, self._estimate_tokens(kwargs)):
             started = time.perf_counter()
             try:
                 async for attempt in AsyncRetrying(
@@ -257,7 +361,10 @@ class LLMClient:
                 return resp.choices[0].message
             except Exception as exc:
                 last_exc = exc
-                self.breaker.record_failure(model)
+                if _is_rate_limit(exc):
+                    await self._on_rate_limit(model, exc)
+                else:
+                    self.breaker.record_failure(model)
                 LLM_CALLS.labels(model, "error").inc()
                 log.warning(
                     "llm call failed; trying fallback",
@@ -334,10 +441,15 @@ class LLMClient:
         if not self.enabled:
             raise LLMUnavailableError("no LLM provider configured")
         last_exc: BaseException | None = None
-        for model in self.candidate_models(role):
+        est = self._estimate_tokens({"messages": messages, "max_tokens": max_tokens})
+        async for model in self._models_to_try(role, est):
             started = time.perf_counter()
             emitted = False
             prompt_tokens = completion_tokens = 0
+            streamed_chars = 0
+            # LiteLLM's Groq stream parser crashes on the usage-only final chunk,
+            # so only request it from other providers; estimate usage otherwise.
+            extra = {} if model.startswith("groq/") else {"stream_options": {"include_usage": True}}
             try:
                 resp = await self._acompletion(
                     model,
@@ -345,7 +457,7 @@ class LLMClient:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     stream=True,
-                    stream_options={"include_usage": True},
+                    **extra,
                 )
                 async for chunk in resp:
                     u = getattr(chunk, "usage", None)
@@ -358,7 +470,11 @@ class LLMClient:
                     text = getattr(delta, "content", None)
                     if text:
                         emitted = True
+                        streamed_chars += len(text)
                         yield text
+                if not completion_tokens:
+                    prompt_tokens = sum(len(str(m.get("content") or "")) for m in messages) // 4
+                    completion_tokens = streamed_chars // 4
                 self.breaker.record_success(model)
                 LLM_CALLS.labels(model, "ok").inc()
                 if usage is not None:
@@ -374,7 +490,10 @@ class LLMClient:
                 return
             except Exception as exc:
                 last_exc = exc
-                self.breaker.record_failure(model)
+                if _is_rate_limit(exc):
+                    await self._on_rate_limit(model, exc)
+                else:
+                    self.breaker.record_failure(model)
                 LLM_CALLS.labels(model, "error").inc()
                 log.warning("llm stream failed", extra={"model": model, "err": str(exc)[:300]})
                 if emitted:
@@ -407,3 +526,4 @@ def get_llm() -> LLMClient:
 def attach_redis(redis: Any) -> None:
     """Share the RPM window across processes once Redis is connected."""
     get_llm().limiter.redis = redis
+    get_llm().tpm.redis = redis

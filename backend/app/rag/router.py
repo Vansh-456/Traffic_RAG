@@ -180,7 +180,7 @@ async def select_tools(
     ]
     try:
         msg = await llm.complete(
-            messages, "fast", tools=TOOL_SPECS, usage=usage, purpose="routing", max_tokens=400
+            messages, "route", tools=TOOL_SPECS, usage=usage, purpose="routing", max_tokens=250
         )
     except (LLMUnavailableError, TimeoutError) as exc:
         log.info("tool selection failed; using rules", extra={"err": str(exc)[:200]})

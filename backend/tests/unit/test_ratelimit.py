@@ -29,3 +29,24 @@ async def test_acquire_times_out():
     with pytest.raises(TimeoutError):
         await rl.acquire("m", max_wait=0.2)
     assert time.monotonic() - started < 1
+
+
+async def test_background_limit_leaves_headroom():
+    redis = fakeredis.aioredis.FakeRedis()
+    rl = RateLimiter(5, redis)
+    for _ in range(2):
+        assert await rl._try_acquire("m", limit=2) == 0  # background share
+    assert await rl._try_acquire("m", limit=2) > 0  # background must wait...
+    assert await rl._try_acquire("m") == 0  # ...while interactive still has room
+
+
+async def test_token_budget_wait_and_block():
+    from app.providers.ratelimit import TokenBudget
+
+    tb = TokenBudget(1000, fakeredis.aioredis.FakeRedis())
+    assert await tb.wait_seconds("groq/x", 600) == 0
+    await tb.reserve("groq/x", 600)
+    assert await tb.wait_seconds("groq/x", 300) == 0
+    assert 55 < await tb.wait_seconds("groq/x", 500) <= 60.1  # must wait for the first reservation
+    await tb.block("groq/y", 5)
+    assert 4 < await tb.wait_seconds("groq/y", 10) <= 5

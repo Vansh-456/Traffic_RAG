@@ -286,13 +286,21 @@ async def run(
     # 6.6 verification --------------------------------------------------------
     t0 = time.perf_counter()
     verification: VerificationResult = await verify(
-        answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by != "abstain"
+        answer,
+        evidence,
+        llm,
+        usage,
+        enabled=cfg.use_verification and generated_by != "abstain",
+        lexical_may_rewrite=generated_by != "llm",
     )
     final_answer = answer
     if (
         verification.changed
         and verification.unsupported_ratio > REGENERATE_THRESHOLD
         and llm.enabled
+        # free-tier budget: only regenerate if it won't queue; else keep the hedged revision
+        and settings.regenerate_unsupported
+        and await llm.has_budget("answer", 2500)
     ):
         yield {"event": "status", "data": {"message": "Re-checking the answer against sources…"}}
         try:
@@ -302,14 +310,14 @@ async def run(
                 "answer",
                 usage=usage,
                 purpose="regeneration",
-                max_tokens=900,
+                max_tokens=700,
                 temperature=0.0,
             )
             stripper = gen.FollowupStripper()
             stripper.feed(regen)
             regen_text = stripper.answer_text()
             follow_ups = stripper.followups() or follow_ups
-            second = await verify(regen_text, evidence, llm, usage)
+            second = await verify(regen_text, evidence, llm, usage, lexical_may_rewrite=False)
             internals["verification_first_pass"] = verification.to_dict()
             verification = second
             final_answer = second.revised_text if second.changed else regen_text
