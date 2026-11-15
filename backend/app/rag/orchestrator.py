@@ -286,7 +286,12 @@ async def run(
     # 6.6 verification --------------------------------------------------------
     t0 = time.perf_counter()
     verification: VerificationResult = await verify(
-        answer, evidence, llm, usage, enabled=cfg.use_verification and generated_by != "abstain"
+        answer,
+        evidence,
+        llm,
+        usage,
+        enabled=cfg.use_verification and generated_by != "abstain",
+        lexical_may_rewrite=generated_by != "llm",
     )
     final_answer = answer
     if (
@@ -309,7 +314,7 @@ async def run(
             stripper.feed(regen)
             regen_text = stripper.answer_text()
             follow_ups = stripper.followups() or follow_ups
-            second = await verify(regen_text, evidence, llm, usage)
+            second = await verify(regen_text, evidence, llm, usage, lexical_may_rewrite=False)
             internals["verification_first_pass"] = verification.to_dict()
             verification = second
             final_answer = second.revised_text if second.changed else regen_text

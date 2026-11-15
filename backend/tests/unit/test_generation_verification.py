@@ -131,3 +131,10 @@ def test_map_features_and_cards_from_tools():
     cards = gen.cards(ev)
     assert cards[0]["type"] == "live_traffic" and cards[0]["current_speed"] == 14
     _ = datetime.now(IST)
+
+
+async def test_lexical_fallback_does_not_rewrite_llm_answers():
+    llm = LLMClient(Settings(_env_file=None, groq_api_key="", gemini_api_key=""))
+    answer = "Ring Road is jammed because of a protest near ITO [1]."
+    res = await verify(answer, _evidence(), llm, lexical_may_rewrite=False)
+    assert res.method == "lexical-advisory" and not res.changed and res.revised_text == answer
