@@ -1,0 +1,10 @@
+# Static event calendar (times IST). Movable festivals/fixtures should be
+# added each year; extracted events from advisories/news are added automatically.
+events:
+  - {name: Republic Day Parade, venue: Kartavya Path, start: "2027-01-26T06:00", end: "2027-01-26T13:00"}
+  - {name: Republic Day Full Dress Rehearsal, venue: Kartavya Path, start: "2027-01-23T06:00", end: "2027-01-23T13:00"}
+  - {name: Beating Retreat Ceremony, venue: Vijay Chowk, start: "2027-01-29T14:00", end: "2027-01-29T21:00"}
+  - {name: Independence Day Celebrations, venue: Red Fort, start: "2026-08-15T04:00", end: "2026-08-15T10:00"}
+  - {name: Independence Day Full Dress Rehearsal, venue: Red Fort, start: "2026-08-13T04:00", end: "2026-08-13T10:00"}
+  - {name: Gandhi Jayanti Prayer Meeting, venue: Rajghat, start: "2026-10-02T06:00", end: "2026-10-02T11:00"}
+  - {name: Republic Day Parade, venue: Kartavya Path, start: "2026-01-26T06:00", end: "2026-01-26T13:00"}
