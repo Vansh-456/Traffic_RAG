@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import time
 from dataclasses import asdict
 from datetime import datetime
@@ -62,7 +63,7 @@ def use_eval_db() -> str:
             conn.execute(f'CREATE DATABASE "{name}"')
             log.info("created eval database", extra={"db": name})
     backend_dir = Path(__file__).resolve().parents[2]
-    subprocess.run(["alembic", "upgrade", "head"], cwd=backend_dir, check=True, env={**os.environ})
+    subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=backend_dir, check=True, env={**os.environ}, capture_output=True)
     return eval_url
 
 
@@ -153,7 +154,8 @@ async def evaluate_question(q: dict[str, Any], cfg: RunConfig) -> dict[str, Any]
     expect_abstain = bool(q.get("unanswerable") or q.get("out_of_scope"))
     verification = (result.internals or {}).get("verification") or {}
     claims = verification.get("claims") or []
-    cited_doc_urls = [c.get("url") or "" for c in result.citations if c.get("kind") == "chunk"]
+    cited_doc_urls = [c.get("doc_url") or c.get("url") or "" for c in result.citations if c.get("kind") == "chunk"]
+    gate = (result.internals or {}).get("relevance_gate") or {}
     row: dict[str, Any] = {
         "id": q["id"], "question": q["question"], "intent_expected": q["intent"], "intent": result.intent,
         "language": q["language"], "answer": result.answer[:1500], "retrieved": retrieved[:10],
@@ -164,13 +166,16 @@ async def evaluate_question(q: dict[str, Any], cfg: RunConfig) -> dict[str, Any]
         "latency_ms": round(elapsed, 1), "first_token_ms": result.first_token_ms,
         "cost_usd": ((result.internals or {}).get("usage") or {}).get("cost_usd", 0.0),
         "tags": q.get("tags", []),
+        "best_score": gate.get("best_score"),
+        "tool_data": gate.get("tool_data", False),
     }
     if gold:
         row.update({
             "recall@5": M.recall_at_k(retrieved, gold, 5), "recall@10": M.recall_at_k(retrieved, gold, 10),
             "mrr": M.mrr(retrieved, gold), "ndcg@10": M.ndcg_at_k(retrieved, gold, 10),
             "context_precision": M.context_precision(retrieved, gold),
-            "citation_accuracy": M.citation_accuracy(cited_doc_urls, gold, [c["supported"] for c in claims if c.get("citations")]),
+            "citation_accuracy": M.citation_accuracy(cited_doc_urls, gold, []),  # gold-based: comparable across ablations
+            "claim_support": (sum(c["supported"] for c in claims) / len(claims)) if claims else None,
             "answer_relevancy": M.answer_relevancy(q["question"], result.answer),
         })
     if q.get("out_of_scope"):
@@ -198,7 +203,26 @@ def aggregate(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "latency_p50_ms": M.percentile(lat, 50), "latency_p95_ms": M.percentile(lat, 95),
         "first_token_p50_ms": M.percentile(ftl, 50), "first_token_p95_ms": M.percentile(ftl, 95),
         "cost_per_query_usd": round(M.mean([r["cost_usd"] for r in rows]), 6),
+        "threshold_sweep": threshold_sweep(rows),
     }
+
+
+def threshold_sweep(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Abstention accuracy for candidate RELEVANCE_THRESHOLD values (calibration aid).
+
+    Only rows that went through retrieval and the gate are considered; tool data
+    overrides the gate exactly as in the orchestrator.
+    """
+    gated = [r for r in rows if r.get("best_score") is not None and not r["id"].startswith("oos")]
+    gated = [r for r in gated if r["intent_expected"] != "out_of_scope"]
+    if not gated:
+        return {}
+    results = {}
+    for t in (0.05, 0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.25, 0.3):
+        correct = sum(1 for r in gated if ((r["best_score"] < t and not r["tool_data"]) == r["expect_abstain"]))
+        results[f"{t:.2f}"] = round(correct / len(gated), 4)
+    best = max(results, key=lambda k: (results[k], -abs(float(k) - 0.15)))
+    return {"accuracy_by_threshold": results, "best": float(best), "n": len(gated)}
 
 
 def _git_sha() -> str | None:
