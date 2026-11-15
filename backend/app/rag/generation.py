@@ -221,6 +221,12 @@ def build_messages(
 
 
 _FOLLOWUP_RE = re.compile(r"<followups>(.*?)</followups>", re.S)
+# gpt-oss sometimes cites OpenAI-style: 【3】 or 【3†source】 -> [3]
+_ALT_CITE = re.compile(r"【\s*(\d+)[^】]*】")
+
+
+def normalize_citations(text: str) -> str:
+    return _ALT_CITE.sub(lambda m: f"[{m.group(1)}]", text)
 
 
 class FollowupStripper:
@@ -250,15 +256,19 @@ class FollowupStripper:
             if self.TAG.startswith(self.buffer[-n:]):
                 keep = n
                 break
+        # also hold back an unfinished 【n】 citation so it can be normalised whole
+        open_cite = self.buffer.rfind("【")
+        if open_cite != -1 and "】" not in self.buffer[open_cite:]:
+            keep = max(keep, len(self.buffer) - open_cite)
         out = self.buffer[: len(self.buffer) - keep]
         self.buffer = self.buffer[len(self.buffer) - keep :]
-        return out
+        return normalize_citations(out)
 
     def flush(self) -> str:
         if self.hold:
             return ""
         out, self.buffer = self.buffer, ""
-        return out
+        return normalize_citations(out)
 
     def followups(self) -> list[str]:
         m = _FOLLOWUP_RE.search(self.raw)
@@ -271,7 +281,9 @@ class FollowupStripper:
             return []
 
     def answer_text(self) -> str:
-        return _FOLLOWUP_RE.sub("", self.raw).replace("<followups>", "").strip()
+        return normalize_citations(
+            _FOLLOWUP_RE.sub("", self.raw).replace("<followups>", "")
+        ).strip()
 
 
 async def stream_answer(
@@ -443,6 +455,7 @@ def cards(ev: list[Evidence]) -> list[dict[str, Any]]:
 
 
 def cited_ids(answer: str) -> set[int]:
+    answer = normalize_citations(answer)
     return {
         int(x)
         for group in re.findall(r"\[(\d+(?:\s*,\s*\d+)*)\]", answer)
