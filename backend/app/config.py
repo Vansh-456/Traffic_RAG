@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     # --- RAG tuning ---
     cache_sim_threshold: float = 0.95
     dedup_sim_threshold: float = 0.92
-    relevance_threshold: float = 0.15
+    relevance_threshold: float = 0.08  # calibrated on the eval set (docs/evaluation.md)
     rate_limit_per_min: int = 20
     retrieval_top_k: int = 8
     rerank_candidates: int = 40
