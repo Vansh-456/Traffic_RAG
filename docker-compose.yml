@@ -36,7 +36,30 @@ services:
       timeout: 3s
       retries: 20
 
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        INSTALL_LOCAL_ML: ${INSTALL_LOCAL_ML:-0}
+    image: delhi-traffic-copilot-backend
+    <<: *backend-env
+    ports: ["8000:8000"]
+    volumes: [rawdata:/data, models:/models]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    image: delhi-traffic-copilot-backend
+    <<: *backend-env
+    command: ["python", "-m", "app.worker"]
+    volumes: [rawdata:/data, models:/models]
+    depends_on:
+      api: { condition: service_healthy }
+
 volumes:
+  models:
   pgdata:
   redisdata:
   rawdata:
