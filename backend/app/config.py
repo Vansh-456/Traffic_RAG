@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     crawl_delay_seconds: float = 2.0
 
     # --- Datastores ---
-    database_url: str = "postgresql+asyncpg://copilot:copilot@localhost:5432/copilot"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "postgresql+asyncpg://copilot:copilot@localhost:5433/copilot"
+    redis_url: str = "redis://localhost:6380/0"
 
     # --- LLM ---
     llm_provider: str = "groq"

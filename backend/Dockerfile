@@ -2,9 +2,17 @@
 FROM python:3.11-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     UV_HTTP_TIMEOUT=300 HF_HOME=/models
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Optional Debian mirror for slow networks (apt still verifies GPG signatures).
+ARG APT_MIRROR=
+RUN if [ -n "$APT_MIRROR" ]; then \
+      sed -i "s#http://deb.debian.org/debian#${APT_MIRROR}#g" /etc/apt/sources.list.d/*.sources 2>/dev/null || true; \
+    fi \
+ && apt-get update && apt-get install -y --no-install-recommends \
       tesseract-ocr tesseract-ocr-hin tesseract-ocr-eng libgl1 curl \
  && rm -rf /var/lib/apt/lists/*
+# Python package index (override with a mirror on slow networks).
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV UV_INDEX_URL=$PIP_INDEX_URL PIP_INDEX_URL=$PIP_INDEX_URL
 RUN pip install uv
 WORKDIR /app
 
