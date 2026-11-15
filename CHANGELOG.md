@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-15 — Phase 12: Docs & polish
+
+### Added
+- README with Mermaid architecture, quick start, CLI and docs index
+- docs/architecture.md: services, request flow, data model, failure behaviour
+- docs/rag-design.md: every technique, rationale, how to inspect it and its measured effect
+
 ## [0.11.0] - 2026-11-15 — Phase 11: Hardening & deployment
 
 ### Added
