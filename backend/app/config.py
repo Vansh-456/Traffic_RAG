@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_NEWS_QUERIES = [
@@ -144,6 +144,14 @@ class Settings(BaseSettings):
     schedule_alerts: str = "*/5 * * * *"
     schedule_retention: str = "0 3 * * *"
     schedule_eval: str = "0 4 * * *"
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _drop_comment_values(cls, value: object) -> object:
+        """Treat `KEY=   # comment` (as some .env parsers deliver it) as empty."""
+        if isinstance(value, str) and value.strip().startswith("#"):
+            return ""
+        return value
 
     @property
     def news_queries(self) -> list[str]:
