@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-15 — Phase 3: Ingestion I — advisories
+
+### Added
+- DTP crawler: RSS (en/hi), taxonomy listings, node pages with structured news/end dates, attached PDFs; node-id backfill discovery
+- Polite fetcher (robots.txt, >=2 s/domain, retries, descriptive UA) and raw download cache
+- PDF text layer -> Tesseract hin+eng OCR -> Gemini vision fallback, garbled Hindi font detection
+- Structure-aware chunking with section splitting, in-section overlap and contextual headers
+- Schema-validated LLM enrichment (event type, places, IST validity, summaries, hypothetical questions) with heuristic fallback
+- Geocoded chunk geometry, embeddings + question index, SimHash/cosine dedup with canonical selection, Hindi/English linking
+- Note: the backfill CLI command ships with the shared jobs runner in Phase 4
+
 ## [0.2.0] - 2026-11-15 — Phase 2: Gazetteer & geocoding
 
 ### Added
