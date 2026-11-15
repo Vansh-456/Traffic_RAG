@@ -161,9 +161,9 @@ async def job_dtp_incremental(stats: JobStats) -> None:
             await _process_drafts(drafts, stats)
 
 
-async def job_dtp_backfill(stats: JobStats, start: int = 1, limit: int | None = None) -> None:
+async def job_dtp_backfill(stats: JobStats, start: int = 1, limit: int | None = None, max_id: int | None = None) -> None:
     async with PoliteFetcher() as f:
-        urls = await dtp_advisories.discover_backfill(f, start=start)
+        urls = await dtp_advisories.discover_backfill(f, start=start, max_id=max_id)
         if limit:
             urls = urls[:limit]
         stats.details["candidates"] = len(urls)

@@ -234,8 +234,10 @@ async def discover_incremental(fetcher: PoliteFetcher) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-async def discover_backfill(fetcher: PoliteFetcher, start: int = 1) -> list[str]:
-    """All node URLs up to the newest node id seen on the listing page."""
-    listing = await fetcher.get(LISTING_URLS[0])
-    top = max_node_id(listing.text) + 5
+async def discover_backfill(fetcher: PoliteFetcher, start: int = 1, max_id: int | None = None) -> list[str]:
+    """Node URLs from `max_id` (default: newest id on the listing page + 5) down to `start`."""
+    if max_id is None:
+        listing = await fetcher.get(LISTING_URLS[0])
+        max_id = max_node_id(listing.text) + 5
+    top = max_id
     return [f"{BASE}/en/node/{i}" for i in range(top, start - 1, -1)]

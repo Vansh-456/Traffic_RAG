@@ -48,11 +48,15 @@ def _print(stats: Any) -> None:
 
 
 @ingest.command("backfill-dtp")
-def backfill_dtp(start: int = typer.Option(1, help="lowest node id"), limit: int | None = typer.Option(None, help="max nodes to scan (newest first)")) -> None:
+def backfill_dtp(
+    start: int = typer.Option(1, help="lowest node id"),
+    limit: int | None = typer.Option(None, help="max nodes to scan (newest first)"),
+    max_id: int | None = typer.Option(None, help="highest node id (default: newest on the site)"),
+) -> None:
     """Crawl all historical DTP advisory nodes (+ attached PDFs)."""
     from app.ingestion.jobs import job_dtp_backfill, run_job
 
-    _print(_run(run_job("dtp_advisories", "backfill", lambda st: job_dtp_backfill(st, start=start, limit=limit), lock_ttl=6 * 3600)))
+    _print(_run(run_job("dtp_advisories", "backfill", lambda st: job_dtp_backfill(st, start=start, limit=limit, max_id=max_id), lock_ttl=6 * 3600)))
 
 
 @ingest.command("backfill-news")
