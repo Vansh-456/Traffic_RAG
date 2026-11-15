@@ -298,6 +298,8 @@ async def run(
         verification.changed
         and verification.unsupported_ratio > REGENERATE_THRESHOLD
         and llm.enabled
+        # free-tier budget: only regenerate if it won't queue; else keep the hedged revision
+        and await llm.has_budget("answer", 2500)
     ):
         yield {"event": "status", "data": {"message": "Re-checking the answer against sources…"}}
         try:
