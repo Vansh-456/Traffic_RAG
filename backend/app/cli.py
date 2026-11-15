@@ -23,14 +23,15 @@ app.add_typer(db_app, name="db")
 app.add_typer(alerts_app, name="alerts")
 
 
-def _run(coro: Coroutine[Any, Any, Any]) -> Any:
+def _run(coro: Coroutine[Any, Any, Any], background: bool = True) -> Any:
     configure_logging(get_settings().log_level)
 
     async def wrapped() -> Any:
-        from app.providers.llm import attach_redis
+        from app.providers.llm import attach_redis, get_llm
         from app.redis_client import get_redis
 
         attach_redis(get_redis())
+        get_llm().background = background
         from app.db.session import session_scope
         from app.ingestion.geocoding import refresh_geocoder
         from app.ingestion.jobs import ensure_sources
@@ -208,12 +209,13 @@ def eval_run(
     from app.eval.runner import run_ablations, run_eval
 
     if ablation:
-        report = _run(run_ablations(ablation, subset=subset))
+        report = _run(run_ablations(ablation, subset=subset), background=False)
     else:
         report = _run(
             run_eval(
                 subset=subset, label=label or subset, gate=gate, update_baseline=update_baseline
-            )
+            ),
+            background=False,
         )
     _print(report)
     if gate and report.get("gate", {}).get("passed") is False:

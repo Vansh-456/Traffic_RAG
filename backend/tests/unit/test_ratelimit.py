@@ -29,3 +29,12 @@ async def test_acquire_times_out():
     with pytest.raises(TimeoutError):
         await rl.acquire("m", max_wait=0.2)
     assert time.monotonic() - started < 1
+
+
+async def test_background_limit_leaves_headroom():
+    redis = fakeredis.aioredis.FakeRedis()
+    rl = RateLimiter(5, redis)
+    for _ in range(2):
+        assert await rl._try_acquire("m", limit=2) == 0  # background share
+    assert await rl._try_acquire("m", limit=2) > 0  # background must wait...
+    assert await rl._try_acquire("m") == 0  # ...while interactive still has room

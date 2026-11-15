@@ -31,11 +31,11 @@ class RateLimiter:
         self._local: dict[str, deque[float]] = {}
         self._lock = asyncio.Lock()
 
-    async def acquire(self, key: str, max_wait: float = 90.0) -> None:
+    async def acquire(self, key: str, max_wait: float = 90.0, limit: int | None = None) -> None:
         """Wait for a slot; raises TimeoutError after `max_wait` seconds."""
         deadline = time.monotonic() + max_wait
         while True:
-            wait = await self._try_acquire(key)
+            wait = await self._try_acquire(key, limit or self.limit)
             if wait <= 0:
                 return
             if time.monotonic() + wait > deadline:
@@ -45,27 +45,28 @@ class RateLimiter:
             )
             await asyncio.sleep(wait)
 
-    async def _try_acquire(self, key: str) -> float:
+    async def _try_acquire(self, key: str, limit: int | None = None) -> float:
+        limit = limit or self.limit
         if self.redis is not None:
             try:
-                return await self._try_redis(key)
+                return await self._try_redis(key, limit)
             except Exception as exc:  # pragma: no cover - redis outage path
                 log.warning("rate limiter redis unavailable, using local", extra={"err": str(exc)})
                 self.redis = None
-        return await self._try_local(key)
+        return await self._try_local(key, limit)
 
-    async def _try_local(self, key: str) -> float:
+    async def _try_local(self, key: str, limit: int) -> float:
         async with self._lock:
             now = time.monotonic()
             window = self._local.setdefault(key, deque())
             while window and now - window[0] >= WINDOW_SECONDS:
                 window.popleft()
-            if len(window) < self.limit:
+            if len(window) < limit:
                 window.append(now)
                 return 0.0
             return WINDOW_SECONDS - (now - window[0]) + 0.05
 
-    async def _try_redis(self, key: str) -> float:
+    async def _try_redis(self, key: str, limit: int) -> float:
         assert self.redis is not None
         rkey = f"ratelimit:llm:{key}"
         now = time.time()
@@ -73,7 +74,7 @@ class RateLimiter:
         pipe.zremrangebyscore(rkey, 0, now - WINDOW_SECONDS)
         pipe.zcard(rkey)
         _, count = await pipe.execute()
-        if int(count) < self.limit:
+        if int(count) < limit:
             await self.redis.zadd(rkey, {f"{now}:{uuid.uuid4().hex[:8]}": now})
             await self.redis.expire(rkey, int(WINDOW_SECONDS) + 5)
             return 0.0

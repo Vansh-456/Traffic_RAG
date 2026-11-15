@@ -136,6 +136,9 @@ async def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
     attach_redis(get_redis())
+    from app.providers.llm import get_llm
+
+    get_llm().background = True  # ingestion yields RPM headroom to interactive chat
     await bootstrap()
     scheduler = AsyncIOScheduler(timezone=settings.timezone)
     schedule(scheduler)
