@@ -96,7 +96,14 @@ def parse_node(html: str, url: str) -> NodeData | None:
         return None
     node_id, classes = int(art.group(1)), art.group(2)
     node_type = next(
-        (c.removeprefix("node-") for c in classes.split() if c.startswith("node-") and c != "node-promoted" and c != "node-sticky" and not c.startswith("node-teaser")),
+        (
+            c.removeprefix("node-")
+            for c in classes.split()
+            if c.startswith("node-")
+            and c != "node-promoted"
+            and c != "node-sticky"
+            and not c.startswith("node-teaser")
+        ),
         "unknown",
     )
     title_m = re.search(r"<h1[^>]*>\s*(.*?)\s*</h1>", html, re.S)
@@ -105,7 +112,9 @@ def parse_node(html: str, url: str) -> NodeData | None:
         return None
     body = _field(html, "news-alert-advisory") or _field(html, "body") or ""
     if not body:
-        content = re.search(r'<div class="field field-name-body.*?</div>\s*</div>\s*</div>', html, re.S)
+        content = re.search(
+            r'<div class="field field-name-body.*?</div>\s*</div>\s*</div>', html, re.S
+        )
         body = clean_text(strip_tags(content.group(0))) if content else ""
     lang_m = re.search(r'<label class="control-label">Language</label>\s*([A-Za-zऀ-ॿ]+)', html)
     language = None
@@ -143,7 +152,12 @@ def is_relevant(node: NodeData) -> bool:
 
 def node_to_drafts(node: NodeData) -> list[DocumentDraft]:
     """HTML node → one draft; each attached PDF → its own draft."""
-    meta = {"node_id": node.node_id, "node_type": node.node_type, "category": node.category, "link": node.link}
+    meta = {
+        "node_id": node.node_id,
+        "node_type": node.node_type,
+        "category": node.category,
+        "link": node.link,
+    }
     drafts = [
         DocumentDraft(
             source_id=SOURCE_ID,
@@ -234,7 +248,9 @@ async def discover_incremental(fetcher: PoliteFetcher) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-async def discover_backfill(fetcher: PoliteFetcher, start: int = 1, max_id: int | None = None) -> list[str]:
+async def discover_backfill(
+    fetcher: PoliteFetcher, start: int = 1, max_id: int | None = None
+) -> list[str]:
     """Node URLs from `max_id` (default: newest id on the listing page + 5) down to `start`."""
     if max_id is None:
         listing = await fetcher.get(LISTING_URLS[0])

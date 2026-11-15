@@ -28,7 +28,9 @@ async def ready(response: Response) -> dict[str, Any]:
     try:
         async with get_engine().connect() as conn:
             rows = await conn.execute(
-                text("SELECT extname FROM pg_extension WHERE extname IN ('vector','postgis','pg_trgm')")
+                text(
+                    "SELECT extname FROM pg_extension WHERE extname IN ('vector','postgis','pg_trgm')"
+                )
             )
             exts = {r[0] for r in rows}
         checks["db"] = "ok" if len(exts) == 3 else f"missing extensions: {exts}"

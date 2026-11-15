@@ -56,6 +56,7 @@ async def send_email(to: str, subject: str, body: str) -> bool:
             log.warning("resend failed", extra={"err": str(exc)[:200]})
             return False
     if settings.smtp_host:
+
         def _smtp() -> bool:
             msg = EmailMessage()
             msg["From"], msg["To"], msg["Subject"] = settings.smtp_from, to, subject

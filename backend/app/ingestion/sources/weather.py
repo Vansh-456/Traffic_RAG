@@ -30,11 +30,24 @@ ZONES: dict[str, tuple[float, float]] = {
 VARS = "temperature_2m,precipitation,rain,weather_code,visibility"
 
 WEATHER_CODES = {
-    0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast", 45: "fog",
-    48: "depositing rime fog", 51: "light drizzle", 53: "drizzle", 55: "dense drizzle",
-    61: "slight rain", 63: "moderate rain", 65: "heavy rain", 80: "rain showers",
-    81: "moderate rain showers", 82: "violent rain showers", 95: "thunderstorm",
-    96: "thunderstorm with hail", 99: "thunderstorm with heavy hail",
+    0: "clear sky",
+    1: "mainly clear",
+    2: "partly cloudy",
+    3: "overcast",
+    45: "fog",
+    48: "depositing rime fog",
+    51: "light drizzle",
+    53: "drizzle",
+    55: "dense drizzle",
+    61: "slight rain",
+    63: "moderate rain",
+    65: "heavy rain",
+    80: "rain showers",
+    81: "moderate rain showers",
+    82: "violent rain showers",
+    95: "thunderstorm",
+    96: "thunderstorm with hail",
+    99: "thunderstorm with heavy hail",
 }
 
 
@@ -53,7 +66,9 @@ class WeatherRow:
     flags: list[str] = field(default_factory=list)
 
 
-def derive_flags(rain: float | None, visibility: float | None, temp: float | None, code: int | None) -> list[str]:
+def derive_flags(
+    rain: float | None, visibility: float | None, temp: float | None, code: int | None
+) -> list[str]:
     flags = []
     if (rain or 0) >= 7.5 or code in (65, 82, 95, 96, 99):
         flags.append("heavy_rain")
@@ -74,9 +89,22 @@ def parse_open_meteo(payload: Any, now: datetime) -> list[WeatherRow]:
             t = datetime.fromisoformat(cur["time"]).replace(tzinfo=IST)
             rows.append(
                 WeatherRow(
-                    zone, lat, lon, t, "current", cur.get("temperature_2m"), cur.get("precipitation"),
-                    cur.get("rain"), cur.get("visibility"), cur.get("weather_code"),
-                    derive_flags(cur.get("rain"), cur.get("visibility"), cur.get("temperature_2m"), cur.get("weather_code")),
+                    zone,
+                    lat,
+                    lon,
+                    t,
+                    "current",
+                    cur.get("temperature_2m"),
+                    cur.get("precipitation"),
+                    cur.get("rain"),
+                    cur.get("visibility"),
+                    cur.get("weather_code"),
+                    derive_flags(
+                        cur.get("rain"),
+                        cur.get("visibility"),
+                        cur.get("temperature_2m"),
+                        cur.get("weather_code"),
+                    ),
                 )
             )
         hourly = loc.get("hourly") or {}
@@ -85,10 +113,22 @@ def parse_open_meteo(payload: Any, now: datetime) -> list[WeatherRow]:
             vals = {k: (hourly.get(k) or [None] * (i + 1))[i] for k in VARS.split(",")}
             rows.append(
                 WeatherRow(
-                    zone, lat, lon, t, "forecast" if t > now else "history",
-                    vals["temperature_2m"], vals["precipitation"], vals["rain"], vals["visibility"],
+                    zone,
+                    lat,
+                    lon,
+                    t,
+                    "forecast" if t > now else "history",
+                    vals["temperature_2m"],
+                    vals["precipitation"],
+                    vals["rain"],
+                    vals["visibility"],
                     vals["weather_code"],
-                    derive_flags(vals["rain"], vals["visibility"], vals["temperature_2m"], vals["weather_code"]),
+                    derive_flags(
+                        vals["rain"],
+                        vals["visibility"],
+                        vals["temperature_2m"],
+                        vals["weather_code"],
+                    ),
                 )
             )
     return rows

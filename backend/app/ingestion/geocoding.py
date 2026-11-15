@@ -223,8 +223,10 @@ class AliasIndex:
                 if any(s < end and start < e for s, e in taken):
                     continue
                 # Very short ASCII aliases (CP, DU) must be upper-case in the source
-                if len(alias) <= 3 and alias.isascii() and not re.search(
-                    rf"\b{re.escape(alias)}\b", text_, re.IGNORECASE
+                if (
+                    len(alias) <= 3
+                    and alias.isascii()
+                    and not re.search(rf"\b{re.escape(alias)}\b", text_, re.IGNORECASE)
                 ):
                     continue
                 taken.append((start, end))

@@ -26,24 +26,57 @@ from app.rag.timewindow import TimeWindow, resolve_time_window
 log = get_logger(__name__)
 
 Intent = Literal[
-    "live_conditions", "advisory_lookup", "cause_explanation", "plan_trip",
-    "historical_lookup", "general_info", "out_of_scope",
+    "live_conditions",
+    "advisory_lookup",
+    "cause_explanation",
+    "plan_trip",
+    "historical_lookup",
+    "general_info",
+    "out_of_scope",
 ]
 
 HINGLISH_GLOSSARY = {
-    "kal": "tomorrow", "aaj": "today", "abhi": "now", "ke paas": "near", "paas": "near",
-    "traffic kaisa rahega": "traffic conditions", "kaisa": "how", "rahega": "will be",
-    "band": "closed", "jaam": "jam", "raasta": "route", "rasta": "route", "kyun": "why",
-    "kyon": "why", "sadak": "road", "barish": "rain", "baarish": "rain", "jana": "go",
-    "jaana": "go", "hai": "is", "kya": "what",
+    "kal": "tomorrow",
+    "aaj": "today",
+    "abhi": "now",
+    "ke paas": "near",
+    "paas": "near",
+    "traffic kaisa rahega": "traffic conditions",
+    "kaisa": "how",
+    "rahega": "will be",
+    "band": "closed",
+    "jaam": "jam",
+    "raasta": "route",
+    "rasta": "route",
+    "kyun": "why",
+    "kyon": "why",
+    "sadak": "road",
+    "barish": "rain",
+    "baarish": "rain",
+    "jana": "go",
+    "jaana": "go",
+    "hai": "is",
+    "kya": "what",
 }
 
 INTENT_RULES: list[tuple[str, Intent]] = [
     (r"\b(why|kyun|kyon|cause|reason|wajah)\b|क्यों|वजह", "cause_explanation"),
-    (r"\b(last|previous|pichle|ago|happened|was|were|tha|thi)\b|पिछले|हुआ था|था\b|थी\b", "historical_lookup"),
-    (r"\b(best time|good time|bad time|should i (leave|go|drive)|plan|trip|route to|drive to|go to|reach|jaana|jana|to the airport)\b|कब निकलें", "plan_trip"),
-    (r"\b(diversions?|divert(?:ed)?|closed|closures?|restrict(?:ions?|ed)?|advisor(?:y|ies)|rehearsals?|road ?blocks?|band|arrangements?|curbs?|open|affect(?:ed|s)?|roads? to avoid)\b|डायवर्जन|बंद|प्रतिबंध|खुला|प्रभावित", "advisory_lookup"),
-    (r"\b(slow|jams?|jaam|traffic|congest(?:ed|ion)?|right now|abhi|moving|kaisa|bheed|crowd(?:ed)?|rush)\b|जाम|ट्रैफिक|भीड़", "live_conditions"),
+    (
+        r"\b(last|previous|pichle|ago|happened|was|were|tha|thi)\b|पिछले|हुआ था|था\b|थी\b",
+        "historical_lookup",
+    ),
+    (
+        r"\b(best time|good time|bad time|should i (leave|go|drive)|plan|trip|route to|drive to|go to|reach|jaana|jana|to the airport)\b|कब निकलें",
+        "plan_trip",
+    ),
+    (
+        r"\b(diversions?|divert(?:ed)?|closed|closures?|restrict(?:ions?|ed)?|advisor(?:y|ies)|rehearsals?|road ?blocks?|band|arrangements?|curbs?|open|affect(?:ed|s)?|roads? to avoid)\b|डायवर्जन|बंद|प्रतिबंध|खुला|प्रभावित",
+        "advisory_lookup",
+    ),
+    (
+        r"\b(slow|jams?|jaam|traffic|congest(?:ed|ion)?|right now|abhi|moving|kaisa|bheed|crowd(?:ed)?|rush)\b|जाम|ट्रैफिक|भीड़",
+        "live_conditions",
+    ),
 ]
 OUT_OF_SCOPE = re.compile(
     r"\b(recipe|cricket score|stock|bitcoin|weather in (?!delhi)|movie|song|joke|poem|"
@@ -64,11 +97,24 @@ class LLMQuery(BaseModel):
 
     language: Literal["en", "hi", "hinglish"]
     intent: Intent
-    standalone_question: str = Field(description="The user question rewritten to be self-contained using the conversation")
-    locations: list[str] = Field(default_factory=list, description="Place/road mentions verbatim (origin first, then destination, for trips)")
-    time_expression: str = Field("", description="The time phrase in the question, e.g. 'tomorrow evening', 'last Tuesday', '6 pm Friday', or ''")
-    rewritten_queries: list[str] = Field(default_factory=list, description="2-3 search queries: one English, one Hindi (Devanagari) if relevant, one keyword-style")
-    sub_questions: list[str] = Field(default_factory=list, description="Split compound questions; [] if simple")
+    standalone_question: str = Field(
+        description="The user question rewritten to be self-contained using the conversation"
+    )
+    locations: list[str] = Field(
+        default_factory=list,
+        description="Place/road mentions verbatim (origin first, then destination, for trips)",
+    )
+    time_expression: str = Field(
+        "",
+        description="The time phrase in the question, e.g. 'tomorrow evening', 'last Tuesday', '6 pm Friday', or ''",
+    )
+    rewritten_queries: list[str] = Field(
+        default_factory=list,
+        description="2-3 search queries: one English, one Hindi (Devanagari) if relevant, one keyword-style",
+    )
+    sub_questions: list[str] = Field(
+        default_factory=list, description="Split compound questions; [] if simple"
+    )
 
 
 @dataclass
@@ -104,7 +150,10 @@ class QueryUnderstanding:
         return f"{self.intent}|{locs}|{self.time_window.bucket()}"
 
 
-_FUTURE = re.compile(r"\b(will|tomorrow|kal|rahega|rahegi|hoga|hogi|tonight|weekend|during|next|upcoming)\b|रहेगा|रहेगी|होगा|कल", re.I)
+_FUTURE = re.compile(
+    r"\b(will|tomorrow|kal|rahega|rahegi|hoga|hogi|tonight|weekend|during|next|upcoming)\b|रहेगा|रहेगी|होगा|कल",
+    re.I,
+)
 _PRESENT = re.compile(r"\b(now|right now|currently|abhi|at the moment|is waqt)\b|अभी", re.I)
 
 
@@ -155,10 +204,16 @@ async def heuristic_understanding(
     window = resolve_time_window(text, now, intent)
     rewrites = [standalone, keyword_query(text, locations)]
     return QueryUnderstanding(
-        original=text, standalone=standalone, language=lang, intent=intent, locations=locations,
-        location_mentions=mentions, time_window=window,
+        original=text,
+        standalone=standalone,
+        language=lang,
+        intent=intent,
+        locations=locations,
+        location_mentions=mentions,
+        time_window=window,
         rewritten_queries=list(dict.fromkeys(r for r in rewrites if r.strip())),
-        sub_questions=[], method="heuristic",
+        sub_questions=[],
+        method="heuristic",
     )
 
 
@@ -187,10 +242,20 @@ async def understand(
     convo = "\n".join(f"{t['role']}: {t['content'][:400]}" for t in (history or [])[-6:])
     messages = [
         {"role": "system", "content": SYSTEM.format(now=now.strftime("%A %d %B %Y %H:%M"))},
-        {"role": "user", "content": f"Conversation so far:\n{convo or '(none)'}\n\nNew question: <q>{text}</q>"},
+        {
+            "role": "user",
+            "content": f"Conversation so far:\n{convo or '(none)'}\n\nNew question: <q>{text}</q>",
+        },
     ]
     try:
-        parsed = await llm.complete_json(messages, LLMQuery, role="fast", usage=usage, purpose="query_understanding", max_tokens=700)
+        parsed = await llm.complete_json(
+            messages,
+            LLMQuery,
+            role="fast",
+            usage=usage,
+            purpose="query_understanding",
+            max_tokens=700,
+        )
     except (LLMUnavailableError, LLMOutputError, TimeoutError) as exc:
         log.warning("query understanding llm failed", extra={"err": str(exc)[:200]})
         heur.extra["llm_error"] = str(exc)[:200]
@@ -200,11 +265,20 @@ async def understand(
     locations = await geocoder.geocode_many(mentions)
     if not locations and heur.locations:
         locations = heur.locations
-    time_text = f"{parsed.time_expression} {text}" if parsed.time_expression else parsed.standalone_question or text
+    time_text = (
+        f"{parsed.time_expression} {text}"
+        if parsed.time_expression
+        else parsed.standalone_question or text
+    )
     window = resolve_time_window(time_text, now, parsed.intent)
     # Trust the script detector for Devanagari; LLM decides en vs hinglish
     lang = "hi" if heur.language == "hi" else parsed.language
-    if heur.intent == "out_of_scope" and parsed.intent != "out_of_scope" and not TRAFFIC_WORDS.search(text) and not locations:
+    if (
+        heur.intent == "out_of_scope"
+        and parsed.intent != "out_of_scope"
+        and not TRAFFIC_WORDS.search(text)
+        and not locations
+    ):
         parsed.intent = "out_of_scope"
     rewrites = [parsed.standalone_question or text]
     if use_rewrite:

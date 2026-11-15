@@ -110,6 +110,8 @@ def test_or_tsquery():
 
 def test_window_gap_hours():
     ws, we = NOW, NOW + timedelta(days=1)
-    assert freshness.window_gap_hours(ws, we, NOW + timedelta(hours=5), NOW + timedelta(days=3)) == 0
+    assert (
+        freshness.window_gap_hours(ws, we, NOW + timedelta(hours=5), NOW + timedelta(days=3)) == 0
+    )
     assert freshness.window_gap_hours(ws, we, NOW + timedelta(days=2), None) == pytest.approx(24)
     assert freshness.window_gap_hours(ws, we, None, NOW - timedelta(hours=6)) == pytest.approx(6)

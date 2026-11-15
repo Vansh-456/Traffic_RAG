@@ -199,7 +199,10 @@ async def process(
     async def _enrich(d: chunking.ChunkDraft) -> tuple[Enrichment, str]:
         async with sem:
             return await enrich_chunk(
-                d.text, title=draft.title, published_at=draft.published_at, source_label=source_label
+                d.text,
+                title=draft.title,
+                published_at=draft.published_at,
+                source_label=source_label,
             )
 
     enrichments = await asyncio.gather(*(_enrich(d) for d in drafts))
@@ -276,7 +279,9 @@ async def process(
     stages["geocode"] = {"resolved": sum(len(m) for _, _, m in chunk_rows)}
 
     # 6. embed
-    vectors = await embed_chunk_texts(session, [(c.id, c.text_with_context) for c, _, _ in chunk_rows])
+    vectors = await embed_chunk_texts(
+        session, [(c.id, c.text_with_context) for c, _, _ in chunk_rows]
+    )
     n_questions = 0
     for chunk, enr, _ in chunk_rows:
         n_questions += await embed_questions(session, chunk.id, enr.hypothetical_questions)

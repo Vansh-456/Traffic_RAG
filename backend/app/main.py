@@ -86,7 +86,14 @@ def create_app() -> FastAPI:
             )
             request_id_var.reset(token)
 
-    for r in (health.router, places.router, chat.router, public.router, routes.router, admin.router):
+    for r in (
+        health.router,
+        places.router,
+        chat.router,
+        public.router,
+        routes.router,
+        admin.router,
+    ):
         app.include_router(r)
     return app
 

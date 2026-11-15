@@ -14,13 +14,45 @@ from datetime import date, datetime, time, timedelta
 from app.timeutil import IST
 
 MONTHS = {
-    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3, "apr": 4,
-    "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7, "aug": 8, "august": 8,
-    "sep": 9, "sept": 9, "september": 9, "oct": 10, "october": 10, "nov": 11, "november": 11,
-    "dec": 12, "december": 12,
-    "जनवरी": 1, "फरवरी": 2, "मार्च": 3, "अप्रैल": 4, "मई": 5, "जून": 6, "जुलाई": 7,
-    "अगस्त": 8, "सितंबर": 9, "सितम्बर": 9, "अक्टूबर": 10, "नवंबर": 11, "नवम्बर": 11,
-    "दिसंबर": 12, "दिसम्बर": 12,
+    "jan": 1,
+    "january": 1,
+    "feb": 2,
+    "february": 2,
+    "mar": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "july": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dec": 12,
+    "december": 12,
+    "जनवरी": 1,
+    "फरवरी": 2,
+    "मार्च": 3,
+    "अप्रैल": 4,
+    "मई": 5,
+    "जून": 6,
+    "जुलाई": 7,
+    "अगस्त": 8,
+    "सितंबर": 9,
+    "सितम्बर": 9,
+    "अक्टूबर": 10,
+    "नवंबर": 11,
+    "नवम्बर": 11,
+    "दिसंबर": 12,
+    "दिसम्बर": 12,
 }
 _MONTH_ALT = "|".join(sorted(MONTHS, key=len, reverse=True))
 
@@ -29,7 +61,9 @@ _DAY_MON = re.compile(
     rf"\b(\d{{1,2}})(?:st|nd|rd|th)?(?:\s*(?:&|and|,|to|–|-|—)\s*(\d{{1,2}})(?:st|nd|rd|th)?)?[\s-]*(?:of\s+)?({_MONTH_ALT})\.?,?[\s-]*(\d{{4}})?",
     re.IGNORECASE,
 )
-_MON_DAY = re.compile(rf"\b({_MONTH_ALT})\.?\s+(\d{{1,2}})(?!\d)(?:st|nd|rd|th)?,?\s*(\d{{4}})?", re.IGNORECASE)
+_MON_DAY = re.compile(
+    rf"\b({_MONTH_ALT})\.?\s+(\d{{1,2}})(?!\d)(?:st|nd|rd|th)?,?\s*(\d{{4}})?", re.IGNORECASE
+)
 _TIME = re.compile(
     r"\b(\d{1,2})(?::|\.)?(\d{2})?\s*(am|pm|a\.m\.|p\.m\.|hrs|hours|बजे)\b|\b([01]?\d|2[0-3]):([0-5]\d)\b",
     re.IGNORECASE,
@@ -84,7 +118,9 @@ def extract_times(text: str) -> list[time]:
     return out
 
 
-def validity_window(text: str, published_at: datetime | None) -> tuple[datetime | None, datetime | None]:
+def validity_window(
+    text: str, published_at: datetime | None
+) -> tuple[datetime | None, datetime | None]:
     """Best-effort (valid_from, valid_to) in IST from free text."""
     ref = (published_at or datetime.now(IST)).astimezone(IST).date()
     dates = extract_dates(text, ref)

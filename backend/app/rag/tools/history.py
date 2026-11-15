@@ -13,8 +13,19 @@ from app.rag.retrieval.filters import query_geometry
 from app.timeutil import fmt_ist
 
 ALLOWED_EVENT_TYPES = {
-    "vip_movement", "protest", "festival", "procession", "sports_event", "roadwork",
-    "construction", "waterlogging", "accident", "breakdown", "closure", "general_advisory", "other",
+    "vip_movement",
+    "protest",
+    "festival",
+    "procession",
+    "sports_event",
+    "roadwork",
+    "construction",
+    "waterlogging",
+    "accident",
+    "breakdown",
+    "closure",
+    "general_advisory",
+    "other",
 }
 
 
@@ -76,7 +87,12 @@ async def query_incident_history(
         "advisory_and_news_counts": {r.event_type or "other": int(r.n) for r in by_type},
         "tomtom_incident_counts": {r.category: int(r.n) for r in incidents},
         "examples": [
-            {"chunk_id": r.id, "title": r.title, "event_type": r.event_type, "at": fmt_ist(r.at) if r.at else None}
+            {
+                "chunk_id": r.id,
+                "title": r.title,
+                "event_type": r.event_type,
+                "at": fmt_ist(r.at) if r.at else None,
+            }
             for r in examples
         ],
     }

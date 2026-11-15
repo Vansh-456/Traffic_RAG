@@ -27,17 +27,45 @@ TARGET_MIN = 300
 OVERLAP_RATIO = 0.12
 
 SECTION_KEYWORDS = [
-    r"restrictions?", r"diversions?", r"parking", r"metro", r"alternate\s+routes?",
-    r"alternative\s+routes?", r"do'?s\s*(?:&|and)\s*don'?ts", r"dos\s+and\s+donts", r"advisory",
-    r"road\s+closures?", r"closures?", r"timings?", r"traffic\s+arrangements?",
-    r"routes?\s+to\s+be\s+avoided", r"roads?\s+to\s+be\s+avoided", r"general\s+instructions?",
-    r"commuters?", r"heavy\s+vehicles?", r"goods\s+vehicles?", r"buses", r"emergency",
-    r"no\s+parking", r"pick\s*(?:up)?\s*(?:&|and)\s*drop", r"helpline",
-    r"प्रतिबंध", r"डायवर्जन", r"पार्किंग", r"मेट्रो", r"वैकल्पिक\s+मार्ग", r"क्या\s+करें",
-    r"क्या\s+न\s+करें", r"यातायात\s+व्यवस्था", r"बंद\s+सड़कें", r"सलाह",
+    r"restrictions?",
+    r"diversions?",
+    r"parking",
+    r"metro",
+    r"alternate\s+routes?",
+    r"alternative\s+routes?",
+    r"do'?s\s*(?:&|and)\s*don'?ts",
+    r"dos\s+and\s+donts",
+    r"advisory",
+    r"road\s+closures?",
+    r"closures?",
+    r"timings?",
+    r"traffic\s+arrangements?",
+    r"routes?\s+to\s+be\s+avoided",
+    r"roads?\s+to\s+be\s+avoided",
+    r"general\s+instructions?",
+    r"commuters?",
+    r"heavy\s+vehicles?",
+    r"goods\s+vehicles?",
+    r"buses",
+    r"emergency",
+    r"no\s+parking",
+    r"pick\s*(?:up)?\s*(?:&|and)\s*drop",
+    r"helpline",
+    r"प्रतिबंध",
+    r"डायवर्जन",
+    r"पार्किंग",
+    r"मेट्रो",
+    r"वैकल्पिक\s+मार्ग",
+    r"क्या\s+करें",
+    r"क्या\s+न\s+करें",
+    r"यातायात\s+व्यवस्था",
+    r"बंद\s+सड़कें",
+    r"सलाह",
 ]
 _SECTION_RE = re.compile(
-    r"^\s*(?:[A-Z]\.|[IVX]+\.|\d+\.|\(\w\)|[-•*])?\s*(?:" + "|".join(SECTION_KEYWORDS) + r")\b.{0,60}$",
+    r"^\s*(?:[A-Z]\.|[IVX]+\.|\d+\.|\(\w\)|[-•*])?\s*(?:"
+    + "|".join(SECTION_KEYWORDS)
+    + r")\b.{0,60}$",
     re.IGNORECASE,
 )
 _LIST_ITEM = re.compile(r"^\s*(?:\d+[.)]|\(?[a-z]\)|[ivx]+[.)]|[-•*▪●])\s+", re.IGNORECASE)
@@ -178,9 +206,11 @@ def chunk_text(text: str) -> list[ChunkDraft]:
             pieces.extend((section.heading, w) for w in window_section(section))
             continue
         # merge small adjacent sections up to TARGET_MAX so chunks aren't tiny
-        if pending and estimate_tokens(pending[1]) < TARGET_MIN and estimate_tokens(
-            pending[1] + "\n\n" + section.text
-        ) <= TARGET_MAX:
+        if (
+            pending
+            and estimate_tokens(pending[1]) < TARGET_MIN
+            and estimate_tokens(pending[1] + "\n\n" + section.text) <= TARGET_MAX
+        ):
             heading = " / ".join(h for h in (pending[0], section.heading) if h) or None
             pending = (heading, pending[1] + "\n\n" + section.text)
         else:
@@ -217,7 +247,9 @@ def build_context_header(
     if published_at:
         parts.append(f"Published: {_fmt(published_at)}")
     if valid_from or valid_to:
-        parts.append(f"Valid: {_fmt(valid_from) or '?'} to {_fmt(valid_to) or 'until further notice'}")
+        parts.append(
+            f"Valid: {_fmt(valid_from) or '?'} to {_fmt(valid_to) or 'until further notice'}"
+        )
     if section:
         parts.append(f"Section: {section}")
     return "[" + " | ".join(parts) + "]"

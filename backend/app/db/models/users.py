@@ -81,7 +81,9 @@ class AlertSent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     route_id: Mapped[int] = mapped_column(ForeignKey("saved_routes.id", ondelete="CASCADE"))
-    event_key: Mapped[str] = mapped_column(String(200))  # chunk:123 | incident:abc | digest:2026-11-15
+    event_key: Mapped[str] = mapped_column(
+        String(200)
+    )  # chunk:123 | incident:abc | digest:2026-11-15
     kind: Mapped[str] = mapped_column(String(16))  # advisory|incident|congestion|digest
     channel: Mapped[str] = mapped_column(String(16))  # push|email
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

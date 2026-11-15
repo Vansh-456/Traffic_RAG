@@ -12,9 +12,7 @@ _BOILERPLATE = re.compile(
     r"all rights reserved|copyright ©|advertisement|हमें फॉलो करें|यह भी पढ़ें)",
     re.IGNORECASE,
 )
-_EMOJI = re.compile(
-    "[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f000-\U0001f2ff‍️]+"
-)
+_EMOJI = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f000-\U0001f2ff‍️]+")
 
 
 def strip_tags(fragment: str) -> str:

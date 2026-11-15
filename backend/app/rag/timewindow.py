@@ -15,20 +15,53 @@ from datetime import datetime, time, timedelta
 from app.timeutil import IST
 
 WEEKDAYS = {
-    "monday": 0, "mon": 0, "tuesday": 1, "tue": 1, "tues": 1, "wednesday": 2, "wed": 2,
-    "thursday": 3, "thu": 3, "thurs": 3, "friday": 4, "fri": 4, "saturday": 5, "sat": 5,
-    "sunday": 6, "sun": 6,
-    "somvar": 0, "mangalvar": 1, "budhvar": 2, "guruvar": 3, "shukravar": 4, "shanivar": 5,
-    "ravivar": 6, "सोमवार": 0, "मंगलवार": 1, "बुधवार": 2, "गुरुवार": 3, "शुक्रवार": 4,
-    "शनिवार": 5, "रविवार": 6,
+    "monday": 0,
+    "mon": 0,
+    "tuesday": 1,
+    "tue": 1,
+    "tues": 1,
+    "wednesday": 2,
+    "wed": 2,
+    "thursday": 3,
+    "thu": 3,
+    "thurs": 3,
+    "friday": 4,
+    "fri": 4,
+    "saturday": 5,
+    "sat": 5,
+    "sunday": 6,
+    "sun": 6,
+    "somvar": 0,
+    "mangalvar": 1,
+    "budhvar": 2,
+    "guruvar": 3,
+    "shukravar": 4,
+    "shanivar": 5,
+    "ravivar": 6,
+    "सोमवार": 0,
+    "मंगलवार": 1,
+    "बुधवार": 2,
+    "गुरुवार": 3,
+    "शुक्रवार": 4,
+    "शनिवार": 5,
+    "रविवार": 6,
 }
 PARTS_OF_DAY = {
-    "morning": (time(6), time(11, 59)), "subah": (time(6), time(11, 59)), "सुबह": (time(6), time(11, 59)),
-    "afternoon": (time(12), time(16, 59)), "dopahar": (time(12), time(16, 59)),
-    "evening": (time(17), time(21, 59)), "shaam": (time(17), time(21, 59)), "शाम": (time(17), time(21, 59)),
-    "night": (time(20), time(23, 59)), "raat": (time(20), time(23, 59)), "रात": (time(20), time(23, 59)),
+    "morning": (time(6), time(11, 59)),
+    "subah": (time(6), time(11, 59)),
+    "सुबह": (time(6), time(11, 59)),
+    "afternoon": (time(12), time(16, 59)),
+    "dopahar": (time(12), time(16, 59)),
+    "evening": (time(17), time(21, 59)),
+    "shaam": (time(17), time(21, 59)),
+    "शाम": (time(17), time(21, 59)),
+    "night": (time(20), time(23, 59)),
+    "raat": (time(20), time(23, 59)),
+    "रात": (time(20), time(23, 59)),
 }
-_PAST_TENSE = re.compile(r"\b(tha|thi|the|hua|hui|hue|gaya|gayi|was|were|happened|did)\b|था|थी|हुआ|हुई|गया", re.I)
+_PAST_TENSE = re.compile(
+    r"\b(tha|thi|the|hua|hui|hue|gaya|gayi|was|were|happened|did)\b|था|थी|हुआ|हुई|गया", re.I
+)
 _TIME = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje|बजे)\b", re.I)
 
 
@@ -56,7 +89,9 @@ class TimeWindow:
         return f"{self.label}:{self.start.date().isoformat()}"
 
 
-def _day(d: datetime, start: time = time(0), end: time = time(23, 59, 59)) -> tuple[datetime, datetime]:
+def _day(
+    d: datetime, start: time = time(0), end: time = time(23, 59, 59)
+) -> tuple[datetime, datetime]:
     base = d.astimezone(IST).date()
     return datetime.combine(base, start, IST), datetime.combine(base, end, IST)
 
@@ -101,7 +136,9 @@ def resolve_time_window(text: str, now: datetime, intent: str | None = None) -> 
     def narrow(start: datetime, end: datetime, label: str, **kw: bool) -> TimeWindow:
         if clock:
             c = datetime.combine(start.date(), clock, IST)
-            return TimeWindow(c - timedelta(hours=1), c + timedelta(hours=1, minutes=30), label, **kw)
+            return TimeWindow(
+                c - timedelta(hours=1), c + timedelta(hours=1, minutes=30), label, **kw
+            )
         if pod:
             return TimeWindow(
                 datetime.combine(start.date(), pod[0], IST),
