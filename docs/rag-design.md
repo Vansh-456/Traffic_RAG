@@ -92,6 +92,19 @@ lexical overlap when no LLM is available). Unsupported sentences are removed, or
 than 30 % unsupported triggers one strict regeneration. The faithfulness score is stored with the
 message and shown in admin.
 
+## Measured effect (ablations, 153 questions, zero-key configuration)
+
+From [evaluation.md](evaluation.md). Δ = full system minus the ablated variant.
+
+| Technique | Ablation flag | Effect when removed | Notes |
+|---|---|---|---|
+| Hybrid sparse + trigram lists | `--no-hybrid` | Recall@5 −0.042, MRR −0.022 | largest single win; trigram catches spelling variants |
+| Spatial hard filter | `--no-geo-filter` | Recall@10 −0.012, MRR −0.011 | proximity scoring alone isn't enough |
+| Window-aware freshness | `--no-freshness` | MRR +0.012 without it | fixture questions mostly name explicit dates; the window-overlap fix had already lifted MRR 0.861 → 0.875 |
+| Lexical rerank | `--no-rerank` | MRR +0.024 without it | the lexical fallback is weaker than RRF; measure bge-reranker / Cohere |
+| Query rewrite, question index, verification | `--no-query-rewrite` etc. | no change | LLM-dependent; re-run with `GROQ_API_KEY` |
+| Relevance gate (0.08) | threshold sweep | abstention accuracy 0.901 vs 0.873 at 0.15 | recalibrate per embedder/reranker |
+
 ## Prompt-injection hygiene
 Retrieved text sits inside `<document>` / `<evidence>` tags and every prompt states that this
 text is data. Tools take no free-form SQL. User input is length-limited and rate-limited.
