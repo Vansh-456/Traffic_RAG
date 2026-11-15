@@ -245,15 +245,39 @@ class LLMClient:
         return await self._wait_for(self.model_for(role), tokens) == 0
 
     async def _models_to_try(self, role: Role, tokens: int) -> AsyncIterator[str]:
-        """Yield models ready to call (budget reserved).
+        """Yield models ready to call (budget reserved), in this order:
 
-        Pass 1: candidates in order, skipping any that would need more than
-        LLM_MAX_QUEUE_SECONDS to free budget. Pass 2 (rescue): wait for the Groq
-        candidate that frees up soonest (<= 30 s) instead of failing outright.
+        1. Groq candidates that are free within LLM_MAX_QUEUE_SECONDS (each Groq
+           model has its own token quota);
+        2. a short wait (<= 8 s) for the soonest Groq model, which beats a slow or
+           rate-limited fallback on free tiers;
+        3. non-Groq fallbacks (Gemini), respecting their 429 cooldowns;
+        4. last resort: wait up to 30 s for the soonest Groq model.
         """
         candidates = self.candidate_models(role)
+        groq = [m for m in candidates if m.startswith("groq/")]
+        others = [m for m in candidates if not m.startswith("groq/")]
         threshold = 60.0 if self.background else self.settings.llm_max_queue_seconds
-        for model in candidates:
+
+        tried: set[str] = set()
+
+        async def soonest(limit: float) -> str | None:
+            # only models skipped for budget reasons, never ones that already failed
+            pool = [m for m in groq if m not in tried]
+            if not pool:
+                return None
+            wait, model = min([(await self._wait_for(m, tokens), m) for m in pool])
+            if wait > limit:
+                return None
+            log.info(
+                "waiting for the soonest model", extra={"model": model, "wait_s": round(wait, 1)}
+            )
+            await asyncio.sleep(wait)
+            await self.tpm.reserve(model, tokens)
+            tried.add(model)
+            return model
+
+        for model in groq:
             wait = await self._wait_for(model, tokens)
             if wait > threshold:
                 log.info(
@@ -262,22 +286,16 @@ class LLMClient:
                 continue
             if wait > 0:
                 await asyncio.sleep(wait)
-            if model.startswith("groq/"):
-                await self.tpm.reserve(model, tokens)
-            yield model
-        groq = [m for m in candidates if m.startswith("groq/")]
-        if not groq:
-            return
-        waits = [(await self._wait_for(m, tokens), m) for m in groq]
-        wait, model = min(waits)
-        if wait <= 30.0:
-            log.info(
-                "all models busy; waiting for the soonest",
-                extra={"model": model, "wait_s": round(wait, 1)},
-            )
-            await asyncio.sleep(wait)
             await self.tpm.reserve(model, tokens)
+            tried.add(model)
             yield model
+        if picked := await soonest(8.0):
+            yield picked
+        for model in others:
+            if await self._wait_for(model, tokens) <= threshold:
+                yield model
+        if picked := await soonest(30.0):
+            yield picked
 
     async def _on_rate_limit(self, model: str, exc: BaseException) -> None:
         """Honour the provider's 'try again in Ns' hint as a cooldown (not a breaker failure)."""
