@@ -16,10 +16,11 @@ ENV UV_INDEX_URL=$PIP_INDEX_URL PIP_INDEX_URL=$PIP_INDEX_URL
 RUN pip install uv
 WORKDIR /app
 
-COPY backend/pyproject.toml ./
-RUN mkdir -p app && touch app/__init__.py \
- && uv pip install --system -e . \
- && rm -rf app
+# Hash-pinned lock (regenerate: uv pip compile pyproject.toml --generate-hashes
+# --python-version 3.11 --python-platform x86_64-manylinux_2_28 -o requirements.lock).
+# --require-hashes makes any index/mirror safe: files must match the pinned digests.
+COPY backend/pyproject.toml backend/requirements.lock ./
+RUN uv pip install --system --require-hashes -r requirements.lock
 
 # Optional heavy ML stack (bge-m3 + bge-reranker-v2-m3, CPU torch).
 ARG INSTALL_LOCAL_ML=0
