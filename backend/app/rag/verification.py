@@ -63,9 +63,34 @@ class VerificationResult:
         }
 
 
+_LIST_MARKER = re.compile(r"^(?:\d+[.)]|[-*•])$")
+
+
 def split_claims(answer: str) -> list[str]:
     parts = [p.strip() for p in _SENT_SPLIT.split(answer) if p and p.strip()]
-    return parts
+    # keep a bare list marker ("1.") attached to the item text that follows it
+    merged: list[str] = []
+    for part in parts:
+        if merged and _LIST_MARKER.match(merged[-1]):
+            merged[-1] = f"{merged[-1]} {part}"
+        else:
+            merged.append(part)
+    return merged
+
+
+def _tidy(lines: list[str]) -> list[str]:
+    """Drop list markers left empty and headings left without content by a revision."""
+    out = [ln for ln in lines if not _LIST_MARKER.match(ln.strip())]
+    cleaned: list[str] = []
+    for i, ln in enumerate(out):
+        plain = ln.strip().strip("*# ").strip()
+        is_heading = plain.endswith(":") and len(plain.split()) <= 8
+        nxt = out[i + 1].strip().strip("*# ").strip() if i + 1 < len(out) else ""
+        next_is_heading = nxt.endswith(":") and len(nxt.split()) <= 8
+        if is_heading and (not nxt or next_is_heading):
+            continue
+        cleaned.append(ln)
+    return cleaned
 
 
 def is_checkable(sentence: str) -> bool:
@@ -179,6 +204,7 @@ async def verify(
         elif cited_ids(s):
             core = re.sub(r"\s*\[\d+(?:,\s*\d+)*\]", "", s).rstrip(".")
             revised.append(f"(Unconfirmed) {core}.")
+    revised = _tidy(revised)
     text_ = "\n".join(revised) if "\n" in answer else " ".join(revised)
     return VerificationResult(
         checks=checks, revised_text=text_, changed=bool(unsupported), method=method

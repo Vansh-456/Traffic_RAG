@@ -138,3 +138,14 @@ async def test_lexical_fallback_does_not_rewrite_llm_answers():
     answer = "Ring Road is jammed because of a protest near ITO [1]."
     res = await verify(answer, _evidence(), llm, lexical_may_rewrite=False)
     assert res.method == "lexical-advisory" and not res.changed and res.revised_text == answer
+
+
+def test_split_keeps_list_markers_with_items():
+    from app.rag.verification import _tidy
+
+    parts = split_claims(
+        "**Likely causes:**\n1. Festival diversions on Vikas Marg [1].\n2. Heavy rain [2].\n**Tips:**"
+    )
+    assert parts[1].startswith("1. Festival") and parts[2].startswith("2. Heavy")
+    assert _tidy(["**Likely causes:**", "1.", "2.", "**Tips:**"]) == []
+    assert _tidy(["**Tips:**", "- Use the metro."]) == ["**Tips:**", "- Use the metro."]
