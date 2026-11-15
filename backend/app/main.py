@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, chat, health, places, public
+from app.api import admin, chat, health, places, public, routes
 from app.config import get_settings
 from app.observability.logging import configure_logging, get_logger, request_id_var
 from app.observability.metrics import REQUEST_LATENCY
@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
             )
             request_id_var.reset(token)
 
-    for r in (health.router, places.router, chat.router, public.router, admin.router):
+    for r in (health.router, places.router, chat.router, public.router, routes.router, admin.router):
         app.include_router(r)
     return app
 

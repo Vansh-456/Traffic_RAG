@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-15 — Phase 9: Alerts
+
+### Added
+- Saved routes with corridor geometry (OSRM or straight line, 300 m buffer), active days, departure and digest times
+- Alert matcher on new chunks (pub/sub + 5-min sweep), pre-departure congestion checks, morning digests
+- Web Push (VAPID), Resend/SMTP email (magic-link verified) and in-app channels with alerts_sent dedup
+- My Routes page: autocomplete or map picking, live route status, recent alerts; service worker for push
+- Simulated-event command (copilot alerts simulate / POST /api/admin/simulate-event) for testing
+
 ## [0.8.0] - 2026-11-15 — Phase 8: RAG internals + admin
 
 ### Added
