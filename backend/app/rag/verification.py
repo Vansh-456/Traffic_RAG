@@ -93,6 +93,11 @@ def _tidy(lines: list[str]) -> list[str]:
     return cleaned
 
 
+_UNAVAILABLE = re.compile(
+    r"(not|isn't|is not|n't) (currently )?(available|reported|confirmed)|no (live|real-time|current) "
+    r"(speed |traffic )?data|cannot be (quoted|confirmed)|don't have enough|उपलब्ध नहीं",
+    re.I,
+)
 _BOLD_LINE = re.compile(r"^\W*\*\*[^*]+\*\*\W*$")
 _OFFICIAL = re.compile(
     r"traffic\.delhipolice\.gov\.in|1095|25844444|@dtptraffic|helpline|हेल्पलाइन", re.I
@@ -120,7 +125,7 @@ def is_checkable(sentence: str) -> bool:
         return False  # headings / labels
     if _OFFICIAL.search(sentence) and not cited_ids(sentence):
         return False  # official channels come from the system prompt, not the evidence
-    if is_generic_advice(sentence):
+    if is_generic_advice(sentence) or _UNAVAILABLE.search(sentence):
         return False
     words = _WORD.findall(sentence)
     return len(words) >= 4 and not _SKIP.match(plain) and not sentence.startswith("<")

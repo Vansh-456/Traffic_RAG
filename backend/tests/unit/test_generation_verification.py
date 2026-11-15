@@ -171,3 +171,12 @@ def test_non_claims_are_not_checked():
         "- Use parallel roads such as Ring Road instead of the closed sections."
     )  # names a road
     assert is_checkable("Schools in the affected zones are closed on 16 Nov.")
+
+
+def test_unavailability_statements_are_not_claims():
+    from app.rag.verification import is_checkable
+
+    assert not is_checkable(
+        "No live speed data is available right now, so exact slowdown levels cannot be quoted."
+    )
+    assert is_checkable("Ring Road is moving slowly because of the Chhath diversions.")
