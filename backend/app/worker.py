@@ -15,7 +15,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import text
 
-from app.alerts.matcher import dispatch, match_chunks, run_alerts_cycle
 from app.config import get_settings
 from app.db.session import session_scope
 from app.ingestion import jobs
@@ -48,6 +47,8 @@ async def alert_listener() -> None:
         try:
             pubsub = get_redis().pubsub()
             await pubsub.subscribe(CHANNEL_NEW_CHUNK)
+            from app.alerts.matcher import dispatch, match_chunks
+
             async for msg in pubsub.listen():
                 if msg.get("type") != "message":
                     continue
@@ -61,6 +62,8 @@ async def alert_listener() -> None:
 
 
 async def _alerts_job(stats: jobs.JobStats) -> None:
+    from app.alerts.matcher import run_alerts_cycle
+
     stats.details = await run_alerts_cycle()
 
 
