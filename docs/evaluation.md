@@ -41,11 +41,11 @@ copilot eval generate-questions                 # LLM-drafted questions from *li
 ## Results
 
 <!-- eval:main:start -->
-_Last run: 2026-11-15 18:12 · label `full` · config `{"subset": "full", "ablation": null, "toggles": {"rerank": true, "hybrid": true, "geo_filter": true, "freshness": true, "question_index": true}, "use_rewrite": true, "use_verification": true, "llm": false, "embedding": "hash", "reranker": "lexical"}` · git `485e0b7`_
+_Last run: 2026-11-16 18:17 · label `full-llm` · config `{"subset": "full", "ablation": null, "toggles": {"rerank": true, "hybrid": true, "geo_filter": true, "freshness": true, "question_index": true}, "use_rewrite": true, "use_verification": true, "llm": true, "embedding": "hash", "reranker": "lexical"}` · git `3ba6cbc`_
 
 | Configuration | recall@5 | recall@10 | mrr | ndcg@10 | faithfulness | citation_accuracy | abstention_accuracy | language_match | latency_p95_ms |
 |---|---|---|---|---|---|---|---|---|---|
-| full | 0.889 | 0.911 | 0.875 | 0.858 | 1.000 | 0.324 | 0.889 | 0.974 | 116.1 |
+| full-llm | 0.873 | 0.887 | 0.879 | 0.862 | 0.781 | 0.577 | 0.895 | 0.922 | 60067.7 |
 <!-- eval:main:end -->
 
 ### Ablations (full set, 153 questions)
@@ -65,7 +65,43 @@ _Last run: 2026-11-15 18:10 · label `full` · config `{"subset": "full", "llm":
 | no-verification | 0.889 | 0.911 | 0.875 | 0.858 | 1.000 | 0.324 | 0.889 | 0.974 | 120.9 |
 <!-- eval:ablation:end -->
 
-### Reading the numbers
+### With the LLM vs without (full set, 153 questions)
+
+LLM run: Groq `gpt-oss-120b` (answers), `gpt-oss-20b` (understanding/enrichment), `qwen3.8-27b`
+(routing/verification), Gemini 3.5 Flash fallback, `REGENERATE_UNSUPPORTED=false`, free tiers.
+
+| Metric | No LLM (extractive) | With LLM |
+|---|---|---|
+| Recall@5 / @10 | 0.886 / 0.911 | 0.873 / 0.887 |
+| MRR / nDCG@10 | 0.912 / 0.887 | 0.879 / 0.862 |
+| faithfulness (verifier) | 1.000 (verbatim, vacuous) | **0.781** (real LLM judge) |
+| citation_accuracy (gold-based) | 0.332 | **0.577** |
+| abstention_accuracy | 0.909 | 0.895 |
+| unanswerable abstain rate | 0.545 | 0.500 |
+| language_match | 0.876 | **0.922** |
+| intent_accuracy | 0.726 | **0.791** |
+| first-token p50 / p95 | 0.08 s / 0.12 s | 6.2 s / 35.9 s (see below) |
+| cost per query | $0 | $0.00035 |
+
+What this shows:
+- **The LLM improves the answer layer**: selective citations (+0.25 citation accuracy), better
+  language matching and intent detection. Faithfulness 0.78 is a real score: the verifier still
+  finds roughly one unsupported claim in five, which is then hedged or removed.
+- **Retrieval is slightly lower with LLM rewrites** (MRR −0.033). Retrieval was tuned on the
+  heuristic keyword rewrite, and LLM rewrites add paraphrases that pull in near-miss chunks. A good next
+  ablation is to keep only the original query and the English rewrite for dense search.
+- **Abstention is the weakest area.** Half the unanswerable questions ("diversion at Rohini Sector 3")
+  still get an answer. The LLM usually says that nothing covers that place, but it doesn't use the
+  phrasing the metric counts as abstaining, and some city-wide advisories without geometry clear the
+  gate. A few Hindi questions abstain wrongly when the English rewrite fails. The threshold sweep for
+  this configuration peaks at **0.20** (0.937 vs 0.909 at 0.08), because max-over-rewrites raises
+  scores, so `.env` sets `RELEVANCE_THRESHOLD=0.20` when an LLM key is present.
+- **Latency here is a stress figure, not a user figure.** The runner fires 153 questions
+  back-to-back, which saturates the free-tier 8k tokens/min quotas. Paced like a real user (one
+  question per ~20 s), the live app measured first token p50 ≈ 2 s (1.6–4.2 s) and full answers in
+  3–6 s; see [deployment.md](deployment.md#5-running-on-free-llm-tiers-groq--gemini).
+
+### Reading the numbers (zero-key configuration)
 
 These runs use the **zero-key configuration** that CI uses: hashing embeddings, the lexical
 reranker, and no LLM (heuristic query understanding and enrichment, extractive answers, lexical
